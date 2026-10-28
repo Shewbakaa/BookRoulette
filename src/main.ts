@@ -5,7 +5,12 @@ import { poolFor, pickWinner, ringFor } from './pick';
 import { sound } from './sound';
 import { createCarousel } from './ui/carousel';
 import { createFilter } from './ui/filter';
-import { emitSpinLanded, setSpinHandler } from './app';
+import { emitSpinLanded, onSpinLanded, setSpinHandler } from './app';
+import { showCelebration } from './ui/celebrate';
+import { renderReadingBanner } from './ui/readingBanner';
+import { askConfirm } from './ui/prompt';
+import { reducedMotion } from './ui/fx';
+import { needsSwap, swapMessage } from './reading';
 
 export { onSpinLanded, spinAgain } from './app';
 
@@ -94,9 +99,32 @@ const unlockOnce = (): void => sound.unlock();
 document.addEventListener('touchend', unlockOnce, { once: true, passive: true });
 document.addEventListener('click', unlockOnce, { once: true });
 
+const readingSlot = app.querySelector<HTMLElement>('#reading-slot')!;
+
+// After a landing, let the winner's pop play for a beat, then celebrate.
+onSpinLanded((winner) => {
+  window.setTimeout(() => {
+    showCelebration(winner, {
+      onAlreadyRead: () => store.setStatus(winner.id, 'finished'),
+      onStartReading: async () => {
+        const cur = store.current();
+        if (needsSwap(cur, winner)) {
+          const ok = await askConfirm({ message: swapMessage(cur.title), ok: 'Swap', cancel: 'Cancel' });
+          if (!ok) return false;
+        }
+        store.startReading(winner.id);
+        return true;
+      },
+      onClose: () => {},
+    });
+  }, reducedMotion() ? 150 : 650);
+});
+
 store.subscribe(() => {
   filter.update(store.books());
   refresh();
+  renderReadingBanner(readingSlot, store.current());
 });
 filter.update(store.books());
 refresh();
+renderReadingBanner(readingSlot, store.current());
