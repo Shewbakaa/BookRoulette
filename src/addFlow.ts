@@ -3,10 +3,10 @@ import { normalizeIsbn } from './isbn';
 
 /** User-facing copy for the add flow (kept here so tests and UI agree). */
 export const MSG = {
-  lookingUp: 'Looking up…',
-  found: 'Found it!',
+  lookingUp: 'Looking it up…',
+  found: 'Found it',
   notFound: 'Couldn’t find it — add it manually',
-  duplicate: 'Already in your library',
+  duplicate: 'Already on your shelf',
   manual: 'Add a book',
 } as const;
 

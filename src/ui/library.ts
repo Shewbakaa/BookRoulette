@@ -1,8 +1,10 @@
 import type { Book } from '../types';
 import { store } from '../store';
 import { groupUnread } from '../listLogic';
+import { miniCover } from './bookCard';
 import { bookForm } from './bookForm';
 import { openSheet } from './drawer';
+import { revealList } from './fx';
 import { askConfirm } from './prompt';
 import { toast } from './toast';
 
@@ -13,8 +15,9 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text?: s
   return n;
 };
 
+/** A brass text action (row-level: Edit, Finished, Delete). */
 const btn = (cls: string, text: string, onClick: () => void): HTMLButtonElement => {
-  const b = el('button', `btn btn-sm ${cls}`, text);
+  const b = el('button', `text-act${cls ? ` ${cls}` : ''}`, text);
   b.type = 'button';
   b.addEventListener('click', onClick);
   return b;
@@ -35,27 +38,25 @@ export function openEdit(book: Book): void {
   sheet.body.append(form);
 }
 
-function row(book: Book, i: number): HTMLElement {
+function row(book: Book): HTMLElement {
   const r = el('div', 'lib-row');
-  r.style.setProperty('--i', String(Math.min(i, 12)));
-  const dot = el('span', 'lib-dot');
-  dot.style.background = book.color;
   const info = el('div', 'lib-info');
   info.append(el('span', 'lib-title', book.title), el('span', 'lib-author', book.author));
   const acts = el('div', 'lib-acts');
   acts.append(
-    btn('btn-soft', 'Edit', () => openEdit(book)),
-    btn('btn-soft', 'Finished', () => {
+    btn('', 'Edit', () => openEdit(book)),
+    btn('', 'Finished', () => {
       store.setStatus(book.id, 'finished');
       toast('Marked finished', 'ok');
     }),
-    btn('btn-ghost lib-del', 'Delete', () => {
+    btn('lib-del', 'Delete', () => {
       void askConfirm({ message: ['Delete ', { em: book.title }, '?'], ok: 'Delete', cancel: 'Keep' }).then((ok) => {
         if (ok) store.remove(book.id);
       });
     }),
   );
-  r.append(dot, info, acts);
+  info.append(acts);
+  r.append(miniCover(book), info);
   return r;
 }
 
@@ -70,6 +71,7 @@ export function openLibrary(): void {
   const list = el('div', 'lib-list');
   sheet.body.append(search, list);
 
+  let first = true; // stagger the rows in once; later renders (typing, edits) just swap
   const render = (): void => {
     list.replaceChildren();
     const groups = groupUnread(store.books(), query);
@@ -77,11 +79,14 @@ export function openLibrary(): void {
       list.append(el('p', 'list-empty', query.trim() ? 'No matches' : 'No unread books — add some!'));
       return;
     }
-    let i = 0;
     for (const g of groups) {
-      list.append(el('h3', 'lib-genre', g.genre));
-      for (const b of g.books) list.append(row(b, i++));
+      const sec = el('section', 'lib-sec');
+      sec.append(el('h3', 'lib-genre', g.genre));
+      for (const b of g.books) sec.append(row(b));
+      list.append(sec);
     }
+    if (first) revealList([...list.querySelectorAll('.lib-genre, .lib-row')]);
+    first = false;
   };
   search.addEventListener('input', () => { query = search.value; render(); });
   const unsub = store.subscribe(render);

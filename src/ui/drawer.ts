@@ -1,4 +1,4 @@
-import { afterAnim } from './fx';
+import { revealList, sheetIn, sheetOut } from './fx';
 
 /* ------------------------------------------------------------------ */
 /* Generic bottom sheet (used by the menu drawer, Add book, and Task 8) */
@@ -27,8 +27,9 @@ export interface Sheet {
 const openSheets: Sheet[] = [];
 
 /**
- * Slide-up sheet with a backdrop and a springy entrance. Closes on backdrop tap, Escape,
- * or the ✕ button. Only the top-most sheet reacts to Escape.
+ * Slide-up sheet with a backdrop and a spring entrance (fx.sheetIn / sheetOut). Closes on
+ * backdrop tap, Escape, or the close button. Only the top-most sheet reacts to Escape.
+ * Closing mid-open is safe: sheetOut takes over the same values and the removal is capped.
  */
 export function openSheet(opts: SheetOptions): Sheet {
   const prevFocus = document.activeElement as HTMLElement | null;
@@ -53,15 +54,19 @@ export function openSheet(opts: SheetOptions): Sheet {
   x.type = 'button';
   x.className = 'sheet-x';
   x.setAttribute('aria-label', 'Close');
-  x.textContent = '✕';
+  x.innerHTML =
+    '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" focusable="false">' +
+    '<path d="M1.5 1.5l9 9M10.5 1.5l-9 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
   head.append(h, x);
 
   const body = document.createElement('div');
   body.className = 'sheet-body';
   panel.append(grab, head, body);
   back.append(panel);
+  back.style.opacity = '0';
+  panel.style.opacity = '0';
   document.body.append(back);
-  requestAnimationFrame(() => back.classList.add('on'));
+  void sheetIn(panel, back).catch(() => {});
 
   let closed = false;
   let gone: Promise<void> | null = null;
@@ -83,11 +88,16 @@ export function openSheet(opts: SheetOptions): Sheet {
       document.removeEventListener('keydown', onKey);
       const i = openSheets.indexOf(sheet);
       if (i >= 0) openSheets.splice(i, 1);
-      back.classList.remove('on');
-      back.classList.add('out');
+      back.classList.add('out'); // taps fall through while it leaves
       try { opts.onClose?.(); } catch { /* never let a callback block closing */ }
       if (prevFocus && prevFocus.isConnected) prevFocus.focus({ preventScroll: true });
-      gone = afterAnim(panel, 320).then(() => back.remove());
+      let timer = 0;
+      const cap = new Promise<void>((r) => { timer = window.setTimeout(r, 450); });
+      const out = sheetOut(panel, back).catch(() => {});
+      gone = Promise.race([out, cap]).then(() => {
+        window.clearTimeout(timer);
+        back.remove();
+      });
       return gone;
     },
   };
@@ -105,9 +115,12 @@ export function openSheet(opts: SheetOptions): Sheet {
 /* ------------------------- */
 
 export interface DrawerItem {
-  /** Text label; a function is re-evaluated each time the drawer renders (e.g. "Sound: on"). */
+  /** Row label; a function is re-evaluated each time the drawer renders. */
   label: string | (() => string);
-  icon: string | (() => string);
+  /** Right-side detail (e.g. "7 unread", "On"); re-evaluated on render and after a `stay` tap. */
+  detail?: string | (() => string);
+  /** Draw the detail in brass: it names an action (e.g. "Scan ↗") rather than a fact. */
+  action?: boolean;
   open(): void;
   /** Keep the drawer open after tapping (for toggles). Default: the drawer closes first. */
   stay?: boolean;
@@ -121,7 +134,7 @@ export interface Drawer {
 
 const val = (v: string | (() => string)): string => (typeof v === 'function' ? v() : v);
 
-/** Mounts the floating ☰ button (top-right) and its slide-up menu sheet. */
+/** Mounts the floating brass menu button (top-right) and its slide-up menu sheet. */
 export function createDrawer(items: DrawerItem[]): Drawer {
   const btn = document.createElement('button');
   btn.type = 'button';
@@ -137,38 +150,30 @@ export function createDrawer(items: DrawerItem[]): Drawer {
 
   const renderList = (list: HTMLElement): void => {
     list.replaceChildren();
-    items.forEach((it, i) => {
+    for (const it of items) {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'drawer-item';
-      b.style.setProperty('--i', String(i));
-      const ic = document.createElement('span');
-      ic.className = 'di-icon';
-      ic.setAttribute('aria-hidden', 'true');
-      ic.textContent = val(it.icon);
       const lb = document.createElement('span');
       lb.className = 'di-label';
       lb.textContent = val(it.label);
-      const chev = document.createElement('span');
-      chev.className = 'di-chev';
-      chev.setAttribute('aria-hidden', 'true');
-      chev.textContent = it.stay ? '' : '›';
-      b.append(ic, lb, chev);
+      const dt = document.createElement('span');
+      dt.className = `di-detail${it.action ? ' di-action' : ''}`;
+      dt.textContent = it.detail ? val(it.detail) : '';
+      b.append(lb, dt);
       b.addEventListener('click', () => {
         if (it.stay) {
           it.open();
-          ic.textContent = val(it.icon);
           lb.textContent = val(it.label);
-          b.classList.remove('pulse');
-          void b.offsetWidth;
-          b.classList.add('pulse');
+          dt.textContent = it.detail ? val(it.detail) : '';
           return;
         }
         void api.close();
         it.open();
       });
       list.append(b);
-    });
+    }
+    revealList([...list.children]);
   };
 
   const api: Drawer = {

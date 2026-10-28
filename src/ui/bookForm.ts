@@ -3,6 +3,7 @@ import { GENRES } from '../genres';
 import { cleanInput } from '../addFlow';
 import { colorFor } from '../store';
 import { bookCard } from './bookCard';
+import { pressSpring } from './fx';
 
 const CUSTOM = '__custom__';
 
@@ -59,6 +60,7 @@ export function bookForm(initial: Partial<BookInput>, onSave: (b: BookInput) => 
 
   const title = input('title', initial.title ?? '', 'e.g. The Hobbit');
   title.autocapitalize = 'words';
+  title.classList.add('bf-input-title');
   const author = input('author', initial.author ?? '', 'e.g. J.R.R. Tolkien');
   author.autocapitalize = 'words';
 
@@ -96,8 +98,9 @@ export function bookForm(initial: Partial<BookInput>, onSave: (b: BookInput) => 
 
   const save = document.createElement('button');
   save.type = 'submit';
-  save.className = 'btn btn-hot bf-save';
+  save.className = 'btn btn-primary springy bf-save';
   save.textContent = 'Add to my books';
+  pressSpring(save);
 
   const fields = document.createElement('div');
   fields.className = 'bf-fields';

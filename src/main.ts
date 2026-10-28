@@ -163,14 +163,15 @@ refresh();
 renderReadingBanner(readingSlot, store.current());
 
 // Menu drawer.
+const countOf = (status: Book['status']): number => store.books().filter((b) => b.status === status).length;
 createDrawer([
-  { label: 'Add book', icon: '➕', open: () => { openAddBook(); } },
-  { label: 'Library', icon: '📚', open: () => openLibrary() },
-  { label: 'Finished', icon: '🏆', open: () => openFinished() },
-  { label: 'Backup', icon: '💾', open: () => openBackup() },
+  { label: 'Add a book', detail: 'Scan \u2197\uFE0E', action: true, open: () => { openAddBook(); } },
+  { label: 'Library', detail: () => `${countOf('unread')} unread`, open: () => openLibrary() },
+  { label: 'Finished', detail: () => `${countOf('finished')} read`, open: () => openFinished() },
+  { label: 'Backup', detail: 'Export · Import', open: () => openBackup() },
   {
-    label: () => (sound.muted ? 'Sound: off' : 'Sound: on'),
-    icon: () => (sound.muted ? '🔇' : '🔊'),
+    label: 'Sound',
+    detail: () => (sound.muted ? 'Off' : 'On'),
     stay: true,
     open: () => {
       sound.toggle();

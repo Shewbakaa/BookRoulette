@@ -3,10 +3,11 @@ import { store } from '../store';
 import { lookupIsbn } from '../lookup';
 import { MSG, resolveScan } from '../addFlow';
 import { cameraErrorMessage, startScanner } from '../scanner';
-import { bookCard } from './bookCard';
+import { bookCard, miniCover } from './bookCard';
 import { bookForm } from './bookForm';
 import { openSheet, type Sheet } from './drawer';
-import { reducedMotion } from './fx';
+import { animate } from 'motion';
+import { pressSpring, reducedMotion } from './fx';
 import { toast } from './toast';
 
 interface Flow {
@@ -27,6 +28,10 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text?: s
 const btn = (cls: string, text: string): HTMLButtonElement => {
   const b = el('button', `btn ${cls}`, text);
   b.type = 'button';
+  if (cls.includes('btn-primary')) {
+    b.classList.add('springy'); // Motion owns the press scale, not CSS :active
+    pressSpring(b);
+  }
   return b;
 };
 
@@ -62,6 +67,12 @@ export function openAddBook(opts: { isbn?: string } = {}): Flow {
 
   let stopCam: (() => Promise<void>) | null = null;
   let token = 0; // bumps on every view change, so stale async work is dropped
+  let stopLine: (() => void) | null = null; // the viewfinder's looping scan line
+  const stopScanLine = (): void => {
+    const s = stopLine;
+    stopLine = null;
+    if (s) s();
+  };
   const release = (): void => {
     const s = stopCam;
     stopCam = null;
@@ -71,7 +82,7 @@ export function openAddBook(opts: { isbn?: string } = {}): Flow {
   const sheet = openSheet({
     title: MSG.manual,
     className: 'sheet-add',
-    onClose: () => { token++; release(); if (current?.sheet === sheet) current = null; },
+    onClose: () => { token++; release(); stopScanLine(); if (current?.sheet === sheet) current = null; },
   });
   const view = el('div', 'add-view');
   sheet.body.append(view);
@@ -79,6 +90,7 @@ export function openAddBook(opts: { isbn?: string } = {}): Flow {
   const swap = (...nodes: Node[]): number => {
     token++;
     release();
+    stopScanLine();
     view.classList.remove('swap-in');
     void view.offsetWidth;
     view.classList.add('swap-in');
@@ -103,7 +115,7 @@ export function openAddBook(opts: { isbn?: string } = {}): Flow {
     if (note) nodes.push(el('p', `add-note add-note-${note.kind}`, note.text));
     const form = bookForm(initial, (b) => save(b, form));
     nodes.push(form);
-    const again = btn('btn-ghost add-rescan', '📷 Scan instead');
+    const again = btn('btn-tertiary add-rescan', 'Scan instead');
     again.addEventListener('click', () => showScan());
     nodes.push(again);
     swap(...nodes);
@@ -111,31 +123,27 @@ export function openAddBook(opts: { isbn?: string } = {}): Flow {
   };
 
   const showLookingUp = (isbn: string): void => {
-    sheet.setTitle(MSG.lookingUp);
+    sheet.setTitle(MSG.manual);
     const wrap = el('div', 'add-looking');
-    const shimmer = el('div', 'shimmer-card');
-    shimmer.setAttribute('aria-hidden', 'true');
-    const lines = el('div', 'shimmer-lines');
-    lines.append(el('div', 'shimmer-line'), el('div', 'shimmer-line short'), el('div', 'shimmer-line tiny'));
-    wrap.append(shimmer, lines);
-    const p = el('p', 'add-sub', `${MSG.lookingUp} ISBN ${isbn}`);
+    const cover = el('div', 'looking-cover');
+    cover.setAttribute('aria-hidden', 'true');
+    const p = el('p', 'looking-text', MSG.lookingUp);
     p.setAttribute('role', 'status');
-    const manual = btn('btn-soft add-manual', '✍️ Enter manually');
+    wrap.append(cover, p, el('p', 'looking-isbn', `ISBN ${isbn}`));
+    const manual = btn('btn-secondary add-manual', 'Enter manually');
     manual.addEventListener('click', () => showForm({ isbn }, MSG.manual));
-    swap(wrap, p, manual); // swap() bumps token, so the late lookup result is dropped
+    swap(wrap, manual); // swap() bumps token, so the late lookup result is dropped
   };
 
   const showDuplicate = (existing: Book): void => {
     sheet.setTitle(MSG.duplicate);
     const wrap = el('div', 'add-dupe');
-    const card = bookCard(existing);
-    card.classList.add('dupe-card');
     const meta = el('div', 'add-dupe-meta');
     meta.append(el('div', 'add-dupe-title', existing.title), el('div', 'add-dupe-author', existing.author));
-    wrap.append(card, meta);
+    wrap.append(miniCover(existing), meta);
     const row = el('div', 'add-row');
-    const scanMore = btn('btn-hot', '📷 Scan another');
-    const done = btn('btn-soft', 'Done');
+    const scanMore = btn('btn-primary', 'Scan another');
+    const done = btn('btn-secondary', 'Done');
     scanMore.addEventListener('click', () => showScan());
     done.addEventListener('click', () => void sheet.close());
     row.append(done, scanMore);
@@ -163,7 +171,7 @@ export function openAddBook(opts: { isbn?: string } = {}): Flow {
         showDuplicate(outcome.existing);
         return;
       case 'found':
-        showForm(outcome.input, `${MSG.found} 🎉`);
+        showForm(outcome.input, MSG.found);
         return;
       case 'notFound':
         showForm({ isbn: outcome.isbn }, MSG.manual, { text: MSG.notFound, kind: 'warn' });
@@ -175,12 +183,16 @@ export function openAddBook(opts: { isbn?: string } = {}): Flow {
     sheet.setTitle('Scan a book');
     const cam = el('div', 'scan-cam');
     const viewport = el('div', 'scan-viewport');
-    const laser = el('div', 'scan-laser');
-    laser.setAttribute('aria-hidden', 'true');
+    // Four thin brass corner brackets and a slow 1px scan line (drawn over the camera feed).
+    const frame = el('div', 'scan-frame');
+    frame.setAttribute('aria-hidden', 'true');
+    for (const c of ['tl', 'tr', 'bl', 'br']) frame.append(el('span', `scan-corner ${c}`));
+    const line = el('div', 'scan-line');
+    frame.append(line);
     const starting = el('div', 'scan-starting', 'Starting camera…');
-    cam.append(viewport, laser, starting);
-    const hint = el('p', 'add-sub', 'Point at the barcode on the back of the book.');
-    const manual = btn('btn-soft add-manual', '✍️ Enter manually');
+    cam.append(viewport, frame, starting);
+    const hint = el('p', 'add-hint', 'Point at the barcode on the back');
+    const manual = btn('btn-secondary add-manual', 'Enter manually');
     manual.addEventListener('click', () => showForm({}, MSG.manual));
     const my = swap(cam, hint, manual);
 
@@ -189,6 +201,12 @@ export function openAddBook(opts: { isbn?: string } = {}): Flow {
         if (my !== token || sheet.closed) { void stop(); return; } // view changed while starting
         stopCam = stop;
         cam.classList.add('live');
+        if (!reducedMotion()) {
+          try {
+            const a = animate(line, { y: [-38, 38] }, { duration: 2.6, ease: 'easeInOut', repeat: Infinity, repeatType: 'reverse' });
+            stopLine = () => a.stop();
+          } catch { /* the line just stays centred */ }
+        }
       })
       .catch((err: unknown) => {
         if (my !== token || sheet.closed) return;

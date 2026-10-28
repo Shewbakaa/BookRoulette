@@ -1,6 +1,7 @@
 import { store } from '../store';
 import { backupFilename } from '../listLogic';
 import { openSheet } from './drawer';
+import { pressSpring } from './fx';
 import { toast } from './toast';
 
 export async function exportBackup(): Promise<void> {
@@ -36,16 +37,17 @@ export function importBackup(text: string): void {
 export function openBackup(): void {
   const sheet = openSheet({ title: 'Backup', className: 'sheet-list' });
   const note = document.createElement('p');
-  note.className = 'list-note';
+  note.className = 'backup-note';
   note.textContent = 'Your books live only on this device. Export a file to keep them safe, or import one to restore. On iPhone, use BookRoulette from your Home Screen icon (Safari tabs and the Home Screen app keep separate libraries). Export a backup now and then.';
   const exp = document.createElement('button');
   exp.type = 'button';
-  exp.className = 'btn btn-hot btn-big';
+  exp.className = 'btn btn-primary btn-big springy';
   exp.textContent = 'Export';
+  pressSpring(exp);
   exp.addEventListener('click', () => { void exportBackup(); });
   const imp = document.createElement('button');
   imp.type = 'button';
-  imp.className = 'btn btn-soft btn-big';
+  imp.className = 'btn btn-secondary btn-big';
   imp.textContent = 'Import';
   const file = document.createElement('input');
   file.type = 'file';

@@ -162,36 +162,6 @@ export async function sheetOut(sheet: HTMLElement, backdrop: HTMLElement): Promi
   ]);
 }
 
-/** Fixed, tap-through layer for sparks that are not tied to a positioned host. */
-function fxLayer(rect?: DOMRect): HTMLElement {
-  const layer = document.createElement('div');
-  layer.className = 'fx-layer';
-  if (rect) {
-    layer.style.left = `${rect.left}px`;
-    layer.style.top = `${rect.top}px`;
-    layer.style.width = `${rect.width}px`;
-    layer.style.height = `${rect.height}px`;
-  } else {
-    layer.style.inset = '0';
-  }
-  document.body.append(layer);
-  return layer;
-}
-
-/** @deprecated Temporary wrapper over `sparks`; removed in Task 4. */
-export function bigParty(): void {
-  if (reducedMotion()) return;
-  const layer = fxLayer();
-  void sparks(layer).finally(() => layer.remove());
-}
-
-/** @deprecated Temporary wrapper over `sparks`; removed in Task 4. */
-export function burstFrom(el: Element | null, _size: 'small' | 'medium' = 'small'): void {
-  if (reducedMotion()) return;
-  const layer = fxLayer(el?.getBoundingClientRect());
-  void sparks(layer, { burst: true }).finally(() => layer.remove());
-}
-
 /** Resolve after an element's animation (or `ms`, whichever first). Instant with reduced motion. */
 export function afterAnim(el: HTMLElement, ms: number): Promise<void> {
   if (reducedMotion()) return Promise.resolve();
