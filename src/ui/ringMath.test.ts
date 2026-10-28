@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ringRadius, frontIndex, facing, angleFromMatrix, readableText, clothColor } from './ringMath';
+import { ringRadius, frontIndex, facing, angleFromMatrix, readableText, clothColor, tileRing } from './ringMath';
 import { spinTargetAngle } from '../pick';
 
 describe('ringRadius', () => {
@@ -65,5 +65,25 @@ describe('clothColor', () => {
     expect(clothColor('#F032E6')).toBe('#5b5a32');
     expect(clothColor('#a4532f')).toBe('#a4532f');
     expect(clothColor('#123456')).toBe('#123456');
+  });
+});
+
+describe('tileRing', () => {
+  const ids = (n: number): string[] => Array.from({ length: n }, (_, i) => `b${i}`);
+  it('repeats small rings so a full circle of covers is visible', () => {
+    const t = tileRing(ids(3));
+    expect(t.length).toBeGreaterThanOrEqual(8);
+    expect(t.length % 3).toBe(0);
+    for (const id of ids(3)) expect(t.filter((x) => x === id).length).toBe(t.length / 3);
+  });
+  it('keeps neighbours distinct when repeating', () => {
+    const t = tileRing(ids(2));
+    t.forEach((x, i) => expect(x).not.toBe(t[(i + 1) % t.length]));
+  });
+  it('leaves single books and rings of 8+ alone', () => {
+    expect(tileRing(ids(1))).toEqual(ids(1));
+    expect(tileRing(ids(8))).toEqual(ids(8));
+    expect(tileRing(ids(12))).toEqual(ids(12));
+    expect(tileRing([])).toEqual([]);
   });
 });

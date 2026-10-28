@@ -28,7 +28,7 @@
 - Normal spin stays about 5s total, with about −8° of wind-back over about 180ms before the main move. The final angle always comes from `spinTargetAngle`.
 - `color-scheme: dark`. Manifest `background_color`/`theme_color`, the `theme-color` meta and the Apple status bar all use `#0f0d0a`. Icons are brass on walnut.
 - Copy, verbatim:
-  - celebration: "Tonight you're reading", "Start reading", "Already read this one?", "Yes — set it aside & spin again", "Close"
+  - celebration: "Tonight you're reading", "Start reading", "Already read this one?", "Yes, set it aside & spin again", "Close"
   - main: "Now reading", "Finished it", "Put back", "{n} unread on the shelf"
   - add-book: "Point at the barcode on the back", "Looking it up…", "Already on your shelf"
 - All existing tests keep passing. Update only tests that assert on confetti or on copy changed above.
@@ -105,7 +105,7 @@
   - **Pointer:** use the mockup's brass wedge SVG, 22×26, with a pivot pin and metallic gradient. Position it top-center over the ring with `left: calc(50% - 11px)` and `transform-origin: 50% 4px`. On each per-frame book pass, flick it with Motion `rotate: [0, -14, 0]` over about 0.2s. No flicks under reduced motion.
   - **Spin feel:** a wind-back prelude (about −8° over 180ms, ease-out), then the main move to `spinTargetAngle` over the remaining duration (about 5s total) with a long ease-out, then a gentle settle. Motion or CSS is your choice. The reduced-motion spin stays ≤1.2s with no wind-back.
   - **Spin button:** a 92px brass circle with metallic radial shading, inset highlight and bottom shade, a serif "Spin" label and `pressSpring`. Below it, the caption "{n} unread on the shelf" in tracked uppercase dim text. The disabled state is desaturated, at about 40% opacity.
-  - Empty state: a serif italic line "No books here — add some!" in muted text, with no emoji.
+  - Empty state: a serif italic line "No books here. Add some!" in muted text, with no emoji.
 - [ ] **Step 4:** Run `npx vitest run`, `npx tsc --noEmit` and `npm run build`. Expected: PASS.
 - [ ] **Step 5:** Browser check at 375×812 on `/BookRoulette/?demo`:
   - Compare with `docs/mockups/reading-lamp.html` (Main phone) and take a screenshot.
@@ -123,15 +123,15 @@
 - Consumes: `sparks`, `pressSpring`, `afterAnim` and `reducedMotion` from Task 1.
 - Produces: the same exported signatures (`showCelebration`, `celebrationOpen`, `renderReadingBanner`, `askConfirm`, `toast`).
 
-- [ ] **Step 1: Update the tests** for the new copy: "Tonight you're reading", "Yes — set it aside & spin again", "Now reading", "Finished it". Replace any confetti assertion with: `sparks` is called on open, mocking `./fx`.
+- [ ] **Step 1: Update the tests** for the new copy: "Tonight you're reading", "Yes, set it aside & spin again", "Now reading", "Finished it". Replace any confetti assertion with: `sparks` is called on open, mocking `./fx`.
 - [ ] **Step 2:** Run them. Expected: FAIL.
 - [ ] **Step 3: Implement, matching the "Celebration" phone in the mockup.**
   - **Celebration:**
     - A warm radial glow behind the cover, and a tracked uppercase brass eyebrow.
     - The large cover springs in (rise + scale), with a serif title and "author · genre" in muted text.
-    - Primary "Start reading", then the italic serif "Already read this one?", then the secondary button "Yes — set it aside & spin again", then a tertiary "Close".
+    - Primary "Start reading", then the italic serif "Already read this one?", then the secondary button "Yes, set it aside & spin again", then a tertiary "Close".
     - Call `sparks(overlay)` on open.
-    - The "Moved to Finished ✓" and "No books left — add some!" states keep their logic and are restyled.
+    - The "Moved to Finished ✓" and "No books left. Add some!" states keep their logic and are restyled.
   - **Reading banner:** a line between hairlines with a mini cover, a "Now reading" dim label, the serif title, and brass text actions "Finished it" and "Put back". "Finished it" calls `sparks(banner, { burst: true })`. Animate in and out with Motion.
   - **Swap prompt:** a `#241f18` dialog with a hairline border, a serif message, a primary "Swap" and a secondary "Cancel".
   - **Toasts:** a dark card with a hairline border and a 6px brass dot (ok), muted dot (info) or amber `#c98a3a` dot (warn). It slides and fades in with Motion.

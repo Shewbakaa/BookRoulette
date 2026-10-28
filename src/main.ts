@@ -29,7 +29,7 @@ let saveWarned = false;
 const warnSave = (): void => {
   if (saveWarned) return;
   saveWarned = true;
-  toast("Can't save on this device — your books will be lost when you close the app.", 'warn', 6000);
+  toast("Can't save on this device. Your books will be lost when you close the app.", 'warn', 6000);
 };
 store.onSaveError(warnSave);
 if (!store.persistent()) warnSave();

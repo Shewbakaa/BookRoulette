@@ -23,7 +23,7 @@ export function classifyCameraError(err: unknown): CameraError {
 /** Friendly, non-technical copy for each camera problem. */
 export function cameraErrorMessage(err: unknown): string {
   switch (classifyCameraError(err).code) {
-    case 'denied': return 'Camera access is off. You can allow it in Settings › Safari › Camera — or just type the book in.';
+    case 'denied': return 'Camera access is off. You can allow it in Settings › Safari › Camera, or just type the book in.';
     case 'insecure': return 'The camera only works over a secure (https) connection. You can type the book in instead.';
     case 'nocamera': return 'No camera found on this device. You can type the book in instead.';
     case 'busy': return 'The camera is busy in another app. Close it and try again, or type the book in.';

@@ -76,7 +76,7 @@ export function openLibrary(): void {
     list.replaceChildren();
     const groups = groupUnread(store.books(), query);
     if (!groups.length) {
-      list.append(el('p', 'list-empty', query.trim() ? 'No matches' : 'No unread books — add some!'));
+      list.append(el('p', 'list-empty', query.trim() ? 'No matches' : 'No unread books. Add some!'));
       return;
     }
     for (const g of groups) {

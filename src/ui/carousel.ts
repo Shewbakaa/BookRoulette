@@ -3,7 +3,7 @@ import type { Book } from '../types';
 import { spinTargetAngle } from '../pick';
 import { sound } from '../sound';
 import { bookCard } from './bookCard';
-import { angleFromMatrix, facing, frontIndex, ringRadius } from './ringMath';
+import { angleFromMatrix, facing, frontIndex, ringRadius, tileRing } from './ringMath';
 import { reducedMotion } from './fx';
 
 export interface Carousel {
@@ -60,7 +60,7 @@ export function createCarousel(root: HTMLElement): Carousel {
         <div class="car-tilt"><div class="car-ring"></div></div>
       </div>
       <div class="car-empty" hidden>
-        <p>No books here — add some!</p>
+        <p>No books here. Add some!</p>
       </div>
     </div>`;
   const fader = root.querySelector<HTMLElement>('.car-fader')!;
@@ -75,6 +75,7 @@ export function createCarousel(root: HTMLElement): Carousel {
   let spinning = false;
   let pending: Book[] | null = null;
   let swapTimer = 0;
+  let builtW = 0;
 
   const setAngle = (deg: number): void => {
     angle = deg;
@@ -103,7 +104,8 @@ export function createCarousel(root: HTMLElement): Carousel {
   /** Lay out `books` as a fresh ring (no animation). */
   const build = (books: Book[]): void => {
     const n = books.length;
-    const cardW = parseFloat(getComputedStyle(root).getPropertyValue('--card-w')) || CARD_W_FALLBACK;
+    const cardW = fader.offsetWidth || CARD_W_FALLBACK; // --card-w is a min() expression; read the result
+    builtW = cardW;
     const r = ringRadius(n, cardW);
     const seg = n ? 360 / n : 0;
     ring.style.transition = 'none';
@@ -125,13 +127,41 @@ export function createCarousel(root: HTMLElement): Carousel {
     empty.hidden = n > 0;
     root.classList.toggle('is-empty', n === 0);
     root.classList.toggle('is-single', n === 1);
+    placePointer();
   };
+
+  /**
+   * Rest the pointer's tip 2px above the front cover. Measured, because where that edge lands
+   * depends on ring size, tilt, perspective and viewport (it differs between browsers).
+   */
+  const stage = root.querySelector<HTMLElement>('.car-stage')!;
+  const placePointer = (): void => {
+    const front = slots[frontIndex(angle, slots.length)];
+    if (!front) return;
+    const prev = fader.style.transform;
+    fader.style.transform = 'none'; // measure at rest, not mid filter-fade scale
+    const top = front.face.getBoundingClientRect().top - stage.getBoundingClientRect().top;
+    fader.style.transform = prev;
+    pointer.style.top = `${Math.round(top - 27)}px`; // 26px tall wedge, tip at y=25, 2px gap
+  };
+  let resizeRaf = 0;
+  window.addEventListener('resize', () => {
+    cancelAnimationFrame(resizeRaf);
+    resizeRaf = requestAnimationFrame(() => {
+      if (spinning) return;
+      // Covers resize with the screen (rotation); rebuild so the ring radius matches.
+      if (fader.offsetWidth !== builtW && slots.length) build(slots.map((s) => s.book));
+      else placePointer();
+    });
+  });
 
   /** Swap card contents in place (same ring size), reusing faces already on screen. */
   const reassign = (books: Book[]): void => {
-    const byId = new Map(slots.map((s) => [s.book.id, s]));
+    // A tiled ring shows the same book more than once; each slot needs its own face element.
+    const byId = new Map<string, Slot[]>();
+    for (const s of slots) byId.set(s.book.id, [...(byId.get(s.book.id) ?? []), s]);
     const faces = books.map((b) => {
-      const old = byId.get(b.id);
+      const old = byId.get(b.id)?.shift();
       return old ? { face: old.face, shade: old.shade } : makeFace(b);
     });
     slots.forEach((s, i) => {
@@ -172,8 +202,9 @@ export function createCarousel(root: HTMLElement): Carousel {
     return angleFromMatrix(m.m11, m.m13);
   };
 
-  const render = (books: Book[]): void => {
-    if (spinning) { pending = books; return; }
+  const render = (shelf: Book[]): void => {
+    const books = tileRing(shelf);
+    if (spinning) { pending = shelf; return; }
     // Cancel any in-flight fade first, so toggling a chip on→off quickly can't build the stale ring.
     clearTimeout(swapTimer);
     if (keyOf(books) === shownKey) { fader.classList.remove('out'); return; }
@@ -188,8 +219,9 @@ export function createCarousel(root: HTMLElement): Carousel {
   };
 
   /** Resolves true once the ring has landed on `winner`; false if nothing spun. */
-  const spin = async (next: Book[], winner: Book): Promise<boolean> => {
+  const spin = async (shelf: Book[], winner: Book): Promise<boolean> => {
     if (spinning) return false;
+    const next = tileRing(shelf);
     const wi = next.findIndex((b) => b.id === winner.id);
     if (wi < 0 || next.length === 0) return false;
     spinning = true;

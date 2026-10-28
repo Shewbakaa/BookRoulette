@@ -16,8 +16,10 @@
   --serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
   --sans: 'Inter Tight Variable', 'Inter Tight', system-ui, -apple-system, sans-serif;
 
-  --card-w: 124px; /* read by carousel.ts for the ring radius */
-  --card-h: 186px;
+  /* Covers scale with the phone: as wide as half the screen, capped by height (svh stays put when
+     Safari's toolbar collapses). carousel.ts measures the rendered width for the ring radius. */
+  --card-w: min(46vw, 36svh, 220px);
+  --card-h: calc(var(--card-w) * 1.5);
   color-scheme: dark;
 }
 
@@ -86,64 +88,96 @@ button { font: inherit; color: inherit; }
 .reading-slot { position: relative; padding: 0 16px; }
 .reading-slot:empty { display: none; }
 
-/* ---------- genre filter: plain text items, one sliding brass underline ---------- */
-.filter {
-  position: relative; /* offsetParent for the items + underline */
+/* ---------- Genre Filter dropdown: trigger + checkbox panel, checked rows float to the top ---------- */
+.gf { position: relative; z-index: 20; padding: 4px 16px 0; }
+.gf-trigger {
+  width: 100%;
   display: flex;
-  gap: 16px;
-  overflow-x: auto;
-  padding: 4px 18px;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-  scroll-padding: 0 18px;
-}
-.filter::-webkit-scrollbar { display: none; }
-.filter.disabled .chip { pointer-events: none; }
-.filter.disabled { opacity: 0.45; }
-
-.chip {
-  position: relative;
-  flex: none;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 2px;
   border: 0;
+  border-bottom: 1px solid var(--line);
   background: none;
-  padding: 6px 0;
-  font-family: var(--sans);
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 18px;
-  color: var(--muted);
-  white-space: nowrap;
+  color: var(--ink);
+  font: 400 14px/1.2 var(--sans);
   cursor: pointer;
-  transition: color 0.2s ease, opacity 0.2s ease;
+  text-align: left;
+  transition: border-color 0.2s ease, opacity 0.2s ease;
 }
-.chip.on { color: var(--ink); }
-.chip.zero:not(.on) { opacity: 0.55; }
-.chip .count {
-  margin-left: 2px;
-  font-size: 9px;
-  line-height: 0;
+.gf-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   color: var(--dim);
-  font-variant-numeric: tabular-nums;
 }
-.chip:focus-visible { outline: 1px solid var(--brass); outline-offset: 2px; }
-/* Extra selected items keep a static underline; the lead one is drawn by .filter-underline. */
-.chip.on:not(.lead)::after {
-  content: '';
+.gf-value { flex: 1; font-family: var(--serif); font-size: 19px; color: var(--muted); }
+.gf-trigger.active .gf-value { color: var(--ink); }
+.gf-trigger.active, .gf-trigger.open { border-bottom-color: var(--brass); }
+.gf-chev { align-self: center; color: var(--brass); transition: transform 0.2s ease; }
+.gf-trigger.open .gf-chev { transform: rotate(180deg); }
+.gf-trigger:focus-visible { outline: 1px solid var(--brass); outline-offset: 2px; }
+.gf.disabled .gf-trigger { opacity: 0.45; cursor: default; }
+
+.gf-panel {
   position: absolute;
-  left: 0; right: 0; bottom: 0;
-  height: 1px;
-  background: var(--brass);
+  left: 16px;
+  right: 16px;
+  top: calc(100% + 6px);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 18px 36px -12px rgba(0, 0, 0, 0.7);
+  padding: 6px 0 8px;
 }
-.filter-underline {
-  position: absolute;
-  left: 0;
-  bottom: 4px; /* = .filter bottom padding: sits on the items' bottom edge */
-  height: 1px;
-  background: var(--brass);
-  transform-origin: 0 50%;
-  pointer-events: none;
-  will-change: transform;
+.gf-panel[hidden] { display: none; }
+.gf-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 8px 16px 10px;
+  border-bottom: 1px solid var(--line);
 }
+.gf-title { font: 400 20px var(--serif); color: var(--ink); }
+.gf-clear[hidden] { display: none; }
+.gf-list {
+  max-height: min(52svh, 360px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.gf-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px; /* comfortable tap target */
+  padding: 0 16px;
+  border-bottom: 1px solid rgba(61, 52, 39, 0.5);
+  font: 400 15px var(--sans);
+  color: var(--muted);
+  cursor: pointer;
+  background: var(--card); /* rows slide over each other while reordering */
+}
+.gf-option:last-child { border-bottom: 0; }
+.gf-option input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.gf-box {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--dim);
+  border-radius: 4px;
+  color: transparent;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.gf-option.on { color: var(--ink); }
+.gf-option.on .gf-box { background: var(--brass); border-color: var(--brass); color: var(--brass-ink, #21170a); }
+.gf-option input:focus-visible + .gf-box { outline: 1px solid var(--brass); outline-offset: 2px; }
+.gf-option.zero:not(.on) { opacity: 0.55; }
+.gf-name { flex: 1; }
+.gf-count { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
 
 /* ---------- book card (shared) ---------- */
 .book-card {
@@ -338,15 +372,8 @@ button { font: inherit; color: inherit; }
   color: var(--dim);
 }
 
-@media (min-height: 720px) {
-  :root { --card-w: 146px; --card-h: 219px; }
-}
-@media (max-height: 600px) {
-  :root { --card-w: 108px; --card-h: 162px; }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .car-fader, .chip, .spin-btn { transition-duration: 0.01ms !important; }
+  .car-fader, .gf-chev, .spin-btn { transition-duration: 0.01ms !important; }
 }
 
 /* ---------- shared buttons ---------- */

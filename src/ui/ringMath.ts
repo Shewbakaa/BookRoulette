@@ -7,6 +7,19 @@ export function ringRadius(n: number, cardW: number, gap = 18): number {
   return Math.round((cardW + gap) / 2 / Math.tan(Math.PI / n));
 }
 
+/** Fewest cards that still read as a full ring; smaller libraries are repeated to fill it. */
+export const RING_MIN = 8;
+
+/**
+ * Repeat a small ring's books until there are at least `min` cards. With 2–3 cards the
+ * neighbours sit behind the front cover, so only one book would ever be visible.
+ */
+export function tileRing<T>(items: T[], min = RING_MIN): T[] {
+  if (items.length < 2 || items.length >= min) return items;
+  const reps = Math.ceil(min / items.length);
+  return Array.from({ length: reps }, () => items).flat();
+}
+
 const mod = (a: number, m: number): number => ((a % m) + m) % m;
 
 /**

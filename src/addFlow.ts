@@ -5,7 +5,7 @@ import { normalizeIsbn } from './isbn';
 export const MSG = {
   lookingUp: 'Looking it up…',
   found: 'Found it',
-  notFound: 'Couldn’t find it — add it manually',
+  notFound: 'Couldn’t find it. Add it manually',
   duplicate: 'Already on your shelf',
   manual: 'Add a book',
 } as const;

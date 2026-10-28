@@ -93,7 +93,7 @@ everywhere, a big celebration when a book is picked.
 - **Book lookup:** Google Books API by ISBN first, Open Library as fallback. Both are free with no key needed. Genre = first category or subject, normalized to a short list (Fiction, Fantasy, Sci-Fi, Mystery/Thriller, Romance, Non-fiction, History, Memoir/Biography, Self-help, Other). The user can type their own genre.
 - **Covers:** use the URL from the lookup. If the image fails to load, fall back to the colored card. Optionally cache the cover in storage so it works offline.
 - **Storage:** `localStorage` or IndexedDB.
-- **Many books in the ring:** the 3D ring gets crowded past about 12 books. The winner is always picked randomly from the **whole** filtered pool. If the pool is large, the ring shows a sample of about 12 that always includes the winner. Small pools (1–2 books) still animate sensibly. An empty pool shows a friendly "No books here — add some!" state.
+- **Many books in the ring:** the 3D ring gets crowded past about 12 books. The winner is always picked randomly from the **whole** filtered pool. If the pool is large, the ring shows a sample of about 12 that always includes the winner. Small pools (1–2 books) still animate sensibly. An empty pool shows a friendly "No books here. Add some!" state.
 - **Duplicates:** scanning an ISBN that's already in the library shows "Already in your library" rather than adding it twice.
 - **Extra fun touches:** a sound on each tick and on landing, plus an animated drawer open/close. Sound has a mute toggle.
 - **Book states:** `unread` | `reading` | `finished`. The roulette pool is unread books matching the genre filter.

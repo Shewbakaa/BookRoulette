@@ -59,7 +59,7 @@ They chose direction **C · Reading Lamp** from the mockups (`.superpowers/brain
   - A large cover with a warm glow behind it, then the serif title and "author · genre".
   - A brass primary button, "Start reading".
   - The italic serif question "Already read this one?".
-  - An outline button, "Yes — set it aside & spin again". After it's tapped, the Re-spin and empty-pool states from the existing spec apply.
+  - An outline button, "Yes, set it aside & spin again". After it's tapped, the Re-spin and empty-pool states from the existing spec apply.
   - A text "Close".
 - **Sheets:** a `#241f18` bottom sheet with a top hairline, a grab handle, and a serif heading. Rows are separated by hairlines, with a muted detail on the right and brass for actions.
 - **Buttons:** primary is solid brass with dark text. Secondary is an outline in hairline color with ink text. Tertiary is text only. All are rounded pills (999px) except Spin, which is a circle. There are no gradients except Spin's metallic shading.

@@ -38,7 +38,7 @@ describe('showCelebration', () => {
     expect(root.getAttribute('aria-label')).toBe("Tonight you're reading");
     expect(root.querySelector('.cele-eyebrow')!.textContent).toBe("Tonight you're reading");
     expect(root.querySelector('.cele-q')!.textContent).toBe('Already read this one?');
-    expect(btn('Yes — set it aside & spin again')).toBeTruthy();
+    expect(btn('Yes, set it aside & spin again')).toBeTruthy();
     expect(btn('Start reading')).toBeTruthy();
     expect(btn('Close')).toBeTruthy();
     expect(root.querySelector('img[src="x"]')).toBeNull();
@@ -74,7 +74,7 @@ describe('showCelebration', () => {
     store.add({ title: 'Other', author: 'O', genre: 'Fantasy' });
     const a = actions();
     showCelebration(book, a);
-    btn('Yes — set it aside & spin again').click();
+    btn('Yes, set it aside & spin again').click();
     await flush();
     expect(a.onAlreadyRead).toHaveBeenCalledOnce();
     expect(celebrationOpen()).toBe(true);
@@ -89,9 +89,9 @@ describe('showCelebration', () => {
   it('Yes with no unread books left hides Re-spin and says so', async () => {
     for (const b of store.books()) store.remove(b.id);
     showCelebration(book, actions());
-    btn('Yes — set it aside & spin again').click();
+    btn('Yes, set it aside & spin again').click();
     await flush();
-    expect(document.querySelector('.cele-empty')!.textContent).toBe('No books left — add some!');
+    expect(document.querySelector('.cele-empty')!.textContent).toBe('No books left. Add some!');
     expect(btn('Spin again')).toBeUndefined();
   });
 

@@ -72,7 +72,7 @@ export function showCelebration(book: Book, actions: CelebrationActions): void {
   const ask = el('div', 'cele-panel cele-ask');
   const start = button('btn-primary', 'Start reading');
   const q = el('p', 'cele-q', 'Already read this one?');
-  const yes = button('btn-secondary', 'Yes — set it aside & spin again');
+  const yes = button('btn-secondary', 'Yes, set it aside & spin again');
   const close = button('btn-tertiary cele-close', 'Close');
   ask.append(start, q, yes, close);
 
@@ -158,7 +158,7 @@ export function showCelebration(book: Book, actions: CelebrationActions): void {
     actions.onAlreadyRead();
     if (poolFor(store.books(), actions.genres?.() ?? new Set()).length === 0) {
       respin.hidden = true;
-      const empty = el('p', 'cele-done-msg cele-empty', 'No books left — add some!');
+      const empty = el('p', 'cele-done-msg cele-empty', 'No books left. Add some!');
       empty.setAttribute('role', 'status');
       doneMsg.after(empty);
     }

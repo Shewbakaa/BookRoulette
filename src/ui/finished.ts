@@ -21,7 +21,7 @@ export function openFinished(): void {
     list.replaceChildren();
     const books = finishedNewestFirst(store.books());
     if (!books.length) {
-      list.append(el('p', 'list-empty', 'Nothing finished yet — go read something!'));
+      list.append(el('p', 'list-empty', 'Nothing finished yet. Go read something!'));
       return;
     }
     for (const book of books) {
