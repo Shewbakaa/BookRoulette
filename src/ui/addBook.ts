@@ -6,7 +6,6 @@ import { cameraErrorMessage, startScanner } from '../scanner';
 import { bookCard, miniCover } from './bookCard';
 import { bookForm } from './bookForm';
 import { openSheet, type Sheet } from './drawer';
-import { animate } from 'motion';
 import { pressSpring, reducedMotion } from './fx';
 import { toast } from './toast';
 
@@ -67,12 +66,6 @@ export function openAddBook(opts: { isbn?: string } = {}): Flow {
 
   let stopCam: (() => Promise<void>) | null = null;
   let token = 0; // bumps on every view change, so stale async work is dropped
-  let stopLine: (() => void) | null = null; // the viewfinder's looping scan line
-  const stopScanLine = (): void => {
-    const s = stopLine;
-    stopLine = null;
-    if (s) s();
-  };
   const release = (): void => {
     const s = stopCam;
     stopCam = null;
@@ -82,7 +75,7 @@ export function openAddBook(opts: { isbn?: string } = {}): Flow {
   const sheet = openSheet({
     title: MSG.manual,
     className: 'sheet-add',
-    onClose: () => { token++; release(); stopScanLine(); if (current?.sheet === sheet) current = null; },
+    onClose: () => { token++; release(); if (current?.sheet === sheet) current = null; },
   });
   const view = el('div', 'add-view');
   sheet.body.append(view);
@@ -90,7 +83,7 @@ export function openAddBook(opts: { isbn?: string } = {}): Flow {
   const swap = (...nodes: Node[]): number => {
     token++;
     release();
-    stopScanLine();
+   
     view.classList.remove('swap-in');
     void view.offsetWidth;
     view.classList.add('swap-in');
@@ -201,12 +194,6 @@ export function openAddBook(opts: { isbn?: string } = {}): Flow {
         if (my !== token || sheet.closed) { void stop(); return; } // view changed while starting
         stopCam = stop;
         cam.classList.add('live');
-        if (!reducedMotion()) {
-          try {
-            const a = animate(line, { y: [-38, 38] }, { duration: 2.6, ease: 'easeInOut', repeat: Infinity, repeatType: 'reverse' });
-            stopLine = () => a.stop();
-          } catch { /* the line just stays centred */ }
-        }
       })
       .catch((err: unknown) => {
         if (my !== token || sheet.closed) return;

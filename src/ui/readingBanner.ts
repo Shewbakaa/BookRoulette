@@ -2,6 +2,7 @@ import type { Book } from '../types';
 import { store } from '../store';
 import { bannerKey } from '../reading';
 import { play, reducedMotion, sparks } from './fx';
+import { clothColor } from './ringMath';
 
 type Exit = 'finished' | 'putback' | 'plain';
 const state = new WeakMap<HTMLElement, { key: string; exit: Exit }>();
@@ -14,7 +15,7 @@ function build(root: HTMLElement, book: Book): HTMLElement {
 
   const thumb = document.createElement('div');
   thumb.className = 'rb-thumb';
-  thumb.style.setProperty('--c', book.color);
+  thumb.style.setProperty('--c', clothColor(book.color));
   thumb.setAttribute('aria-hidden', 'true');
   if (book.coverUrl) {
     const img = document.createElement('img');
@@ -66,6 +67,20 @@ function build(root: HTMLElement, book: Book): HTMLElement {
   return wrap;
 }
 
+/**
+ * The carousel is flex:1 under this line, so adding/removing the line shifts the ring.
+ * FLIP it: run `change`, then slide the stage from where it was to where it is now.
+ */
+function flipStage(change: () => void): void {
+  const stage = reducedMotion() ? null : document.querySelector<HTMLElement>('#carousel .car-stage');
+  const before = stage ? stage.getBoundingClientRect().top : 0;
+  change();
+  if (!stage) return;
+  const dy = before - stage.getBoundingClientRect().top;
+  if (Math.abs(dy) < 0.5) return;
+  void play(stage, { y: [dy, 0] }, { duration: 0.35, ease: 'easeOut' });
+}
+
 function leave(wrap: HTMLElement, exit: Exit): void {
   wrap.classList.add('out');
   wrap.querySelectorAll('button').forEach((b) => { b.disabled = true; });
@@ -75,7 +90,7 @@ function leave(wrap: HTMLElement, exit: Exit): void {
   }
   // "Finished it" lingers a beat so the spark burst can play before the line lifts away.
   const kf = exit === 'putback' ? { opacity: 0, y: 10 } : { opacity: 0, y: -10 };
-  void play(wrap, kf, { duration: 0.3, delay: exit === 'finished' ? 0.45 : 0, ease: 'easeIn' }).then(() => wrap.remove());
+  void play(wrap, kf, { duration: 0.3, delay: exit === 'finished' ? 0.45 : 0, ease: 'easeIn' }).then(() => flipStage(() => wrap.remove()));
 }
 
 /**
@@ -97,7 +112,7 @@ export function renderReadingBanner(root: HTMLElement, book: Book | undefined): 
 
   if (book) {
     const wrap = build(root, book);
-    root.append(wrap);
+    flipStage(() => root.append(wrap));
     // A first paint with a book already reading shouldn't animate.
     if (prev && !reducedMotion()) {
       wrap.style.opacity = '0';

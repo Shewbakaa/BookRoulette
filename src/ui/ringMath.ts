@@ -31,14 +31,23 @@ export function angleFromMatrix(m11: number, m13: number): number {
 }
 
 /** Dark or light text for legibility on a #rrggbb background. */
-export function readableText(hex: string): '#1b1030' | '#ffffff' {
+export function readableText(hex: string): '#21170a' | '#efe4cf' {
   const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
-  if (!m) return '#ffffff';
+  if (!m) return '#efe4cf';
   const v = parseInt(m[1], 16);
   const lin = (c: number): number => {
     const s = c / 255;
     return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
   };
   const L = 0.2126 * lin((v >> 16) & 255) + 0.7152 * lin((v >> 8) & 255) + 0.0722 * lin(v & 255);
-  return L > 0.4 ? '#1b1030' : '#ffffff';
+  return L > 0.4 ? '#21170a' : '#efe4cf';
+}
+
+const OLD_PALETTE = ['#e6194b', '#f58231', '#ffe119', '#3cb44b', '#42d4f4', '#4363d8', '#911eb4', '#f032e6'];
+const CLOTH_PALETTE = ['#a4532f', '#2f4a3a', '#1e2a44', '#6b2430', '#a07a2a', '#3f4a52', '#4f3550', '#5b5a32'];
+
+/** Display colour for a stored book colour: the old neon palette maps to the cloth palette; anything else passes through. */
+export function clothColor(hex: string): string {
+  const i = OLD_PALETTE.indexOf(hex.trim().toLowerCase());
+  return i >= 0 ? CLOTH_PALETTE[i] : hex;
 }

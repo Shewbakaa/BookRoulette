@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ringRadius, frontIndex, facing, angleFromMatrix, readableText } from './ringMath';
+import { ringRadius, frontIndex, facing, angleFromMatrix, readableText, clothColor } from './ringMath';
 import { spinTargetAngle } from '../pick';
 
 describe('ringRadius', () => {
@@ -51,10 +51,19 @@ describe('angleFromMatrix', () => {
 
 describe('readableText', () => {
   it('uses dark text on bright colours and white on dark ones', () => {
-    expect(readableText('#ffe119')).toBe('#1b1030');
-    expect(readableText('#42d4f4')).toBe('#1b1030');
-    expect(readableText('#4363d8')).toBe('#ffffff');
-    expect(readableText('#911eb4')).toBe('#ffffff');
-    expect(readableText('nope')).toBe('#ffffff');
+    expect(readableText('#ffe119')).toBe('#21170a');
+    expect(readableText('#42d4f4')).toBe('#21170a');
+    expect(readableText('#4363d8')).toBe('#efe4cf');
+    expect(readableText('#911eb4')).toBe('#efe4cf');
+    expect(readableText('nope')).toBe('#efe4cf');
+  });
+});
+
+describe('clothColor', () => {
+  it('maps the old neon palette index-for-index and passes others through', () => {
+    expect(clothColor('#e6194b')).toBe('#a4532f');
+    expect(clothColor('#F032E6')).toBe('#5b5a32');
+    expect(clothColor('#a4532f')).toBe('#a4532f');
+    expect(clothColor('#123456')).toBe('#123456');
   });
 });

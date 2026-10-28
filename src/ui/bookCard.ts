@@ -1,5 +1,5 @@
 import type { Book } from '../types';
-import { readableText } from './ringMath';
+import { readableText, clothColor } from './ringMath';
 
 /**
  * A book "cover": the real cover image when it loads, otherwise a coloured card
@@ -8,8 +8,9 @@ import { readableText } from './ringMath';
 export function bookCard(book: Book): HTMLElement {
   const el = document.createElement('div');
   el.className = 'book-card';
-  el.style.setProperty('--c', book.color);
-  el.style.setProperty('--ink', readableText(book.color));
+  const cloth = clothColor(book.color);
+  el.style.setProperty('--c', cloth);
+  el.style.setProperty('--ink', readableText(cloth));
 
   const fb = document.createElement('div');
   fb.className = 'bc-fallback';
@@ -45,7 +46,7 @@ export function bookCard(book: Book): HTMLElement {
 export function miniCover(book: Book): HTMLElement {
   const el = document.createElement('div');
   el.className = 'mini-cover';
-  el.style.setProperty('--c', book.color);
+  el.style.setProperty('--c', clothColor(book.color));
   el.setAttribute('aria-hidden', 'true');
   if (book.coverUrl) {
     const img = document.createElement('img');

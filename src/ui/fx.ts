@@ -1,4 +1,4 @@
-import { animate, stagger } from 'motion';
+import { animate } from 'motion';
 import type { AnimationOptions, DOMKeyframesDefinition } from 'motion';
 
 /** Shared motion helpers (Motion-based). Every helper reads reduced motion at call time. */
@@ -117,7 +117,12 @@ export function play(
   return Promise.race([run, cap]).then(() => window.clearTimeout(timer));
 }
 
-/** Staggered fade/rise (50ms apart). Under reduced motion items are simply shown. */
+/** Delay (s) for item `i` of a revealed list: 50ms apart, capped at the 10th so long lists don't crawl. */
+export function revealDelay(i: number): number {
+  return Math.min(i, 10) * 0.05;
+}
+
+/** Staggered fade/rise (50ms apart, capped). Under reduced motion items are simply shown. */
 export function revealList(items: Element[]): void {
   if (!items.length) return;
   if (reducedMotion()) {
@@ -129,7 +134,7 @@ export function revealList(items: Element[]): void {
     }
     return;
   }
-  animate(items, { opacity: [0, 1], y: [10, 0] }, { delay: stagger(0.05), duration: 0.36, ease: 'easeOut' });
+  animate(items, { opacity: [0, 1], y: [10, 0] }, { delay: revealDelay, duration: 0.36, ease: 'easeOut' });
 }
 
 /** Spring slide-up of a bottom sheet with a backdrop fade. Short fade under reduced motion. */

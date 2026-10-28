@@ -11,7 +11,7 @@ vi.mock('motion', () => {
 });
 
 import { animate } from 'motion';
-import { sparks, pressSpring, revealList, sheetIn, sheetOut } from './fx';
+import { sparks, pressSpring, revealList, revealDelay, sheetIn, sheetOut } from './fx';
 
 function setReduced(reduced: boolean): void {
   vi.stubGlobal(
@@ -134,6 +134,15 @@ describe('revealList', () => {
     setReduced(false);
     revealList([document.createElement('li')]);
     expect(animate).toHaveBeenCalled();
+  });
+});
+
+describe('revealDelay', () => {
+  it('steps 50ms and caps at item 10', () => {
+    expect(revealDelay(0)).toBe(0);
+    expect(revealDelay(3)).toBeCloseTo(0.15);
+    expect(revealDelay(10)).toBeCloseTo(0.5);
+    expect(revealDelay(40)).toBeCloseTo(0.5);
   });
 });
 

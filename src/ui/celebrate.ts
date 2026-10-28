@@ -106,7 +106,7 @@ export function showCelebration(book: Book, actions: CelebrationActions): void {
     void play(
       card,
       { opacity: [0, 1], y: [60, 0], scale: [0.6, 1], rotate: [-6, 0] },
-      { type: 'spring', stiffness: 180, damping: 14, delay: 0.12 },
+      { type: 'spring', stiffness: 180, damping: 22, delay: 0.12 },
       2500,
     );
     [meta, ask].forEach((n, i) =>
