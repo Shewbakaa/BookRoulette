@@ -8,7 +8,18 @@ function readMuted(): boolean {
 let ctx: AudioContext | null = null;
 let lastTick = 0;
 
+/**
+ * iOS plays Web Audio in the "ambient" session, which the ring/silent switch mutes even at full
+ * volume. Safari 16.4+ lets a page ask for "playback" instead (in-app Sound toggle still mutes).
+ */
+function preferPlayback(): void {
+  const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+  if (!session || session.type === 'playback') return;
+  try { session.type = 'playback'; } catch { /* unsupported value: keep default */ }
+}
+
 function getCtx(): AudioContext | null {
+  preferPlayback();
   if (ctx) return ctx;
   const AC = globalThis.AudioContext ??
     (globalThis as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
