@@ -38,8 +38,5 @@ export function bookCard(book: Book): HTMLElement {
     el.append(img);
   }
 
-  const shine = document.createElement('div');
-  shine.className = 'bc-shine';
-  el.append(shine);
   return el;
 }

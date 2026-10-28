@@ -128,7 +128,9 @@ export function createDrawer(items: DrawerItem[]): Drawer {
   btn.className = 'menu-btn';
   btn.setAttribute('aria-label', 'Menu');
   btn.setAttribute('aria-expanded', 'false');
-  btn.innerHTML = '<span class="mb-bar"></span><span class="mb-bar"></span><span class="mb-bar"></span>';
+  btn.innerHTML =
+    '<svg class="mb-glyph" width="16" height="12" viewBox="0 0 16 12" aria-hidden="true" focusable="false">' +
+    '<path d="M1 1h14M1 6h14M1 11h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
   document.body.append(btn);
 
   let sheet: Sheet | null = null;

@@ -1,8 +1,10 @@
+import { animate } from 'motion';
 import type { Book } from '../types';
 import { spinTargetAngle } from '../pick';
 import { sound } from '../sound';
 import { bookCard } from './bookCard';
 import { angleFromMatrix, facing, frontIndex, ringRadius } from './ringMath';
+import { reducedMotion } from './fx';
 
 export interface Carousel {
   render(books: Book[]): void;
@@ -11,14 +13,32 @@ export interface Carousel {
 }
 
 const CARD_W_FALLBACK = 124;
-const SPIN_MS = 5000;
-const SPIN_EASE = 'cubic-bezier(.12,.8,.12,1)';
+// Normal spin ≈ 5s: wind-back prelude → long ease-out → gentle settle onto spinTargetAngle.
+const WINDBACK_DEG = 8; // the ring spins toward negative angles, so +8° leans back
+const WINDBACK_MS = 180;
+const WINDBACK_EASE = 'cubic-bezier(.25,.6,.35,1)';
+const MAIN_MS = 4400;
+const MAIN_EASE = 'cubic-bezier(.18,.62,.1,1)';
+const OVERSHOOT_DEG = 1.2; // a hair past the winner, then ease back like a flapper catching
+const SETTLE_MS = 420;
+const SETTLE_EASE = 'cubic-bezier(.35,0,.25,1)';
 const REDUCED_MS = 1200;
-const WINDUP_MS = 420;
-const SWAP_MS = 180; // filter re-render fade/scale half-duration
+const SHADE_MAX = 0.45; // darkest a book gets when it faces away from the lamp
+const SWAP_MS = 180; // filter re-render cross-fade half-duration
 
-const reducedMotion = (): boolean =>
-  typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+/** Brass flapper: a wedge on a pivot pin (from docs/mockups/reading-lamp.html). */
+const POINTER_SVG = `
+  <svg class="pointer car-pointer" width="22" height="26" viewBox="0 0 22 26" aria-hidden="true" focusable="false"
+       style="left: calc(50% - 11px); transform-origin: 50% 4px">
+    <defs>
+      <linearGradient id="car-ptr-brass" x1="0" x2="1">
+        <stop offset="0" stop-color="#f0c876"/><stop offset=".55" stop-color="#c8963c"/><stop offset="1" stop-color="#7a531a"/>
+      </linearGradient>
+    </defs>
+    <circle cx="11" cy="5" r="4" fill="#6d4c17"/>
+    <path d="M3 5h16L11 25z" fill="url(#car-ptr-brass)"/>
+    <circle cx="11" cy="5" r="2" fill="#2a1b06"/>
+  </svg>`;
 
 const keyOf = (books: Book[]): string =>
   books.map((b) => `${b.id}|${b.title}|${b.author}|${b.coverUrl ?? ''}|${b.color}`).join(';');
@@ -34,24 +54,19 @@ export function createCarousel(root: HTMLElement): Carousel {
   root.classList.add('carousel');
   root.innerHTML = `
     <div class="car-stage">
-      <div class="car-spot"></div>
-      <div class="car-floor"></div>
-      <div class="car-pointer" aria-hidden="true"></div>
+      <div class="car-floor" aria-hidden="true"></div>
+      ${POINTER_SVG}
       <div class="car-fader">
         <div class="car-tilt"><div class="car-ring"></div></div>
       </div>
-      <div class="car-burst" aria-hidden="true"></div>
       <div class="car-empty" hidden>
-        <div class="car-empty-icon">📚</div>
         <p>No books here — add some!</p>
       </div>
     </div>`;
-  const stage = root.querySelector<HTMLElement>('.car-stage')!;
   const fader = root.querySelector<HTMLElement>('.car-fader')!;
   const tilt = root.querySelector<HTMLElement>('.car-tilt')!;
   const ring = root.querySelector<HTMLElement>('.car-ring')!;
-  const pointer = root.querySelector<HTMLElement>('.car-pointer')!;
-  const burst = root.querySelector<HTMLElement>('.car-burst')!;
+  const pointer = root.querySelector<SVGSVGElement>('.pointer')!;
   const empty = root.querySelector<HTMLElement>('.car-empty')!;
 
   let slots: Slot[] = [];
@@ -70,7 +85,8 @@ export function createCarousel(root: HTMLElement): Carousel {
     const n = slots.length;
     for (let i = 0; i < n; i++) {
       const s = slots[i];
-      const v = Math.round(facing(deg, i, n) * 0.72 * 100) / 100;
+      // sqrt curve: neighbours already sit noticeably out of the lamplight; full SHADE_MAX by ~70°.
+      const v = Math.round(Math.sqrt(Math.min(1, facing(deg, i, n) * 3)) * SHADE_MAX * 100) / 100;
       if (v !== s.lastShade) { s.lastShade = v; s.shade.style.opacity = String(v); }
     }
   };
@@ -198,25 +214,17 @@ export function createCarousel(root: HTMLElement): Carousel {
         if (idx !== lastTick) {
           lastTick = idx;
           sound.tick();
-          pointer.animate(
-            [{ transform: 'translateX(-50%) rotate(0)' }, { transform: 'translateX(-50%) rotate(-22deg)' }, { transform: 'translateX(-50%) rotate(0)' }],
-            { duration: 110, easing: 'ease-out' },
-          );
+          // Flick on the pivot. Motion writes only rotate(); centering is `left`, never a translate.
+          if (!reduced) animate(pointer, { rotate: [0, -14, 0] }, { duration: 0.2, ease: 'easeOut' });
         }
         shadeAll(a);
         raf = requestAnimationFrame(loop);
       };
 
       root.classList.add('spinning');
-      if (!reduced) {
-        // Anticipation: lean back a little, then let it rip.
-        stage.classList.add('windup');
-        raf = requestAnimationFrame(loop);
-        await transitionTo(angle + 22, WINDUP_MS, 'cubic-bezier(.45,0,.55,1)');
-        stage.classList.remove('windup');
-      } else {
-        raf = requestAnimationFrame(loop);
-      }
+      raf = requestAnimationFrame(loop);
+      // Anticipation: lean back a few degrees before the main move (skipped under reduced motion).
+      if (!reduced) await transitionTo(angle + WINDBACK_DEG, WINDBACK_MS, WINDBACK_EASE);
 
       const target = spinTargetAngle(angle, n, wi, reduced ? 1 : 5);
       // Swap in the sampled ring while cards are a blur (same size → same geometry).
@@ -224,7 +232,13 @@ export function createCarousel(root: HTMLElement): Carousel {
       if (sameShape && keyOf(next) !== shownKey) {
         swap = window.setTimeout(() => reassign(next), reduced ? 60 : 160);
       }
-      await transitionTo(target, reduced ? REDUCED_MS : SPIN_MS, reduced ? 'cubic-bezier(.2,.7,.2,1)' : SPIN_EASE);
+      if (reduced) {
+        await transitionTo(target, REDUCED_MS, 'cubic-bezier(.2,.7,.2,1)');
+      } else {
+        // Long ease-out a hair past the winner, then settle back onto spinTargetAngle exactly.
+        await transitionTo(target - OVERSHOOT_DEG, MAIN_MS, MAIN_EASE);
+        await transitionTo(target, SETTLE_MS, SETTLE_EASE);
+      }
       clearTimeout(swap);
       if (keyOf(next) !== shownKey) reassign(next);
       cancelAnimationFrame(raf);
@@ -235,35 +249,16 @@ export function createCarousel(root: HTMLElement): Carousel {
       shadeAll(angle);
       root.classList.remove('spinning');
 
-      // Settle: winner pops and glows, burst ring, rising arpeggio.
+      // Landed: the winner lifts a touch under the lamp, rising arpeggio.
       const win = slots[wi];
       win.face.classList.add('winner');
       root.classList.add('landed');
       sound.land();
-      if (!reduced) {
-        win.face.animate(
-          [
-            { transform: 'scale(1)' },
-            { transform: 'scale(1.13)', offset: 0.3 },
-            { transform: 'scale(0.98)', offset: 0.6 },
-            { transform: 'scale(1.03)', offset: 0.8 },
-            { transform: 'scale(1)' },
-          ],
-          { duration: 750, easing: 'ease-out' },
-        );
-        burst.animate(
-          [
-            { transform: 'translate(-50%,-50%) scale(.5)', opacity: 0.9 },
-            { transform: 'translate(-50%,-50%) scale(1.9)', opacity: 0 },
-          ],
-          { duration: 700, easing: 'cubic-bezier(.2,.7,.3,1)' },
-        );
-      }
+      if (!reduced) animate(win.face, { scale: [1, 1.035, 1] }, { duration: 0.6, ease: 'easeInOut' });
 
       return true;
     } finally {
       cancelAnimationFrame(raf);
-      stage.classList.remove('windup');
       root.classList.remove('spinning');
       spinning = false;
       if (pending) {

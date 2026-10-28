@@ -12,7 +12,7 @@ import { emitSpinLanded, onSpinLanded, setSpinHandler } from './app';
 import { showCelebration, celebrationOpen } from './ui/celebrate';
 import { renderReadingBanner } from './ui/readingBanner';
 import { askConfirm } from './ui/prompt';
-import { reducedMotion } from './ui/fx';
+import { pressSpring, reducedMotion } from './ui/fx';
 import { needsSwap, swapMessage } from './reading';
 import { createDrawer } from './ui/drawer';
 import { openAddBook } from './ui/addBook';
@@ -55,19 +55,20 @@ const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
   <main class="screen">
     <header class="top">
-      <h1 class="brand">Book<span>Roulette</span></h1>
+      <h1 class="brand">Book <i>Roulette</i></h1>
     </header>
     <section id="reading-slot" class="reading-slot" aria-live="polite"></section>
     <nav id="filter"></nav>
     <section id="carousel" aria-label="Book roulette"></section>
     <footer class="controls">
-      <button id="spin" class="spin-btn" type="button"><span>SPIN</span></button>
+      <button id="spin" class="spin-btn" type="button"><span>Spin</span></button>
       <p id="pool-note" class="pool-note"></p>
     </footer>
   </main>`;
 
 const spinBtn = app.querySelector<HTMLButtonElement>('#spin')!;
 const poolNote = app.querySelector<HTMLParagraphElement>('#pool-note')!;
+pressSpring(spinBtn);
 const carousel = createCarousel(app.querySelector<HTMLElement>('#carousel')!);
 let genres = new Set<string>();
 let spinning = false;
@@ -82,7 +83,7 @@ function updateButton(poolSize: number): void {
   spinBtn.disabled = spinning || celebrating || poolSize === 0;
   filter.setDisabled(spinning || celebrating);
   spinBtn.classList.toggle('busy', spinning || celebrating);
-  poolNote.textContent = poolSize === 0 ? '' : `${poolSize} book${poolSize === 1 ? '' : 's'} in the mix`;
+  poolNote.textContent = poolSize === 0 ? '' : `${poolSize} unread on the shelf`;
 }
 
 function refresh(): void {

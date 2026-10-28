@@ -2,7 +2,9 @@ import type { Book, BookInput, BookStatus } from './types';
 import { normalizeIsbn } from './isbn';
 
 const KEY = 'bookroulette.v1';
-const PALETTE = ['#e6194b', '#f58231', '#ffe119', '#3cb44b', '#42d4f4', '#4363d8', '#911eb4', '#f032e6'];
+// Book-cloth colours: terracotta, forest, navy, oxblood, mustard, slate, plum, olive.
+// Only new books use these; stored books keep their saved colour.
+const PALETTE = ['#a4532f', '#2f4a3a', '#1e2a44', '#6b2430', '#a07a2a', '#3f4a52', '#4f3550', '#5b5a32'];
 
 /** Deterministic card colour for a title (also used for add-form previews). */
 export function colorFor(title: string): string {
