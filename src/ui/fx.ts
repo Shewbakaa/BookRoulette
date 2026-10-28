@@ -1,4 +1,5 @@
 import { animate, stagger } from 'motion';
+import type { AnimationOptions, DOMKeyframesDefinition } from 'motion';
 
 /** Shared motion helpers (Motion-based). Every helper reads reduced motion at call time. */
 export const reducedMotion = (): boolean =>
@@ -29,6 +30,9 @@ export function pressSpring(el: HTMLElement): () => void {
     for (const [ev, fn] of events) el.removeEventListener(ev, fn);
   };
 }
+
+/** Longest spark run is ~2.8s (2.1s + 0.7s delay); never wait longer than this. */
+const SPARK_CAP_MS = 3500;
 
 /**
  * Warm spark dots that rise and fade inside `host` (which should be positioned).
@@ -68,7 +72,7 @@ export async function sparks(host: HTMLElement, opts: { count?: number; burst?: 
             s,
             { x: [0, Math.cos(a) * d], y: [0, Math.sin(a) * d - 18], opacity: [0, 1, 0], scale: [0.6, 1, 0.4] },
             { duration: rand(0.6, 0.85), ease: 'easeOut' },
-          ).finished,
+          ).finished.catch(() => {}),
         );
       } else {
         runs.push(
@@ -76,14 +80,41 @@ export async function sparks(host: HTMLElement, opts: { count?: number; burst?: 
             s,
             { x: [0, rand(-24, 24)], y: [0, -rand(90, 170)], opacity: [0, 1, 0], scale: [0.7, 1, 0.5] },
             { duration: rand(1.3, 2.1), delay: rand(0, 0.7), ease: 'easeOut' },
-          ).finished,
+          ).finished.catch(() => {}),
         );
       }
     });
-    await Promise.all(runs);
+    // A detached host can leave `finished` pending forever; cap the wait so nodes always go.
+    let timer = 0;
+    const cap = new Promise<void>((r) => { timer = window.setTimeout(r, SPARK_CAP_MS); });
+    await Promise.race([Promise.all(runs), cap]);
+    window.clearTimeout(timer);
+  } catch {
+    // Motion threw synchronously (e.g. element gone): fall through to cleanup.
   } finally {
     for (const s of nodes) s.remove();
   }
+}
+
+/**
+ * Run one Motion animation and resolve when it ends. Never rejects and never hangs:
+ * errors are swallowed and the wait is capped at `capMs`.
+ */
+export function play(
+  el: Element | Element[],
+  keyframes: DOMKeyframesDefinition,
+  options: AnimationOptions = {},
+  capMs = 1500,
+): Promise<void> {
+  let timer = 0;
+  const cap = new Promise<void>((r) => { timer = window.setTimeout(r, capMs); });
+  let run: Promise<void>;
+  try {
+    run = animate(el, keyframes, options).finished.then(() => {}, () => {});
+  } catch {
+    run = Promise.resolve();
+  }
+  return Promise.race([run, cap]).then(() => window.clearTimeout(timer));
 }
 
 /** Staggered fade/rise (50ms apart). Under reduced motion items are simply shown. */

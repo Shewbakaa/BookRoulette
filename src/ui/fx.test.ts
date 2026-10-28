@@ -26,7 +26,9 @@ function setReduced(reduced: boolean): void {
 }
 
 let host: HTMLElement;
+const defaultAnimate = vi.mocked(animate).getMockImplementation()!;
 beforeEach(() => {
+  vi.mocked(animate).mockImplementation(defaultAnimate);
   document.body.innerHTML = '';
   host = document.createElement('div');
   document.body.append(host);
@@ -59,6 +61,27 @@ describe('sparks', () => {
     await sparks(host);
     await sparks(host, { count: 5 });
     expect(host.children.length).toBe(0);
+  });
+
+  it('swallows a rejected Motion finish and still removes nodes', async () => {
+    setReduced(false);
+    vi.mocked(animate).mockImplementation(
+      () => ({ finished: Promise.reject(new Error('detached')), stop: vi.fn() }) as never,
+    );
+    await expect(sparks(host, { count: 3 })).resolves.toBeUndefined();
+    expect(host.querySelectorAll('.spark').length).toBe(0);
+  });
+
+  it('never hangs if Motion never finishes (detached host)', async () => {
+    setReduced(false);
+    vi.useFakeTimers();
+    vi.mocked(animate).mockImplementation(() => ({ finished: new Promise(() => {}), stop: vi.fn() }) as never);
+    const p = sparks(host, { count: 3 });
+    expect(host.querySelectorAll('.spark').length).toBe(3);
+    await vi.advanceTimersByTimeAsync(4000);
+    await expect(p).resolves.toBeUndefined();
+    expect(host.querySelectorAll('.spark').length).toBe(0);
+    vi.useRealTimers();
   });
 
   it('creates nothing under reduced motion', async () => {

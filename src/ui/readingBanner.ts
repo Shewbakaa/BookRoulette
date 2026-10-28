@@ -1,7 +1,7 @@
 import type { Book } from '../types';
 import { store } from '../store';
 import { bannerKey } from '../reading';
-import { afterAnim, burstFrom } from './fx';
+import { play, reducedMotion, sparks } from './fx';
 
 type Exit = 'finished' | 'putback' | 'plain';
 const state = new WeakMap<HTMLElement, { key: string; exit: Exit }>();
@@ -15,6 +15,7 @@ function build(root: HTMLElement, book: Book): HTMLElement {
   const thumb = document.createElement('div');
   thumb.className = 'rb-thumb';
   thumb.style.setProperty('--c', book.color);
+  thumb.setAttribute('aria-hidden', 'true');
   if (book.coverUrl) {
     const img = document.createElement('img');
     img.alt = '';
@@ -25,16 +26,12 @@ function build(root: HTMLElement, book: Book): HTMLElement {
     img.src = book.coverUrl;
     thumb.append(img);
   }
-  const glyph = document.createElement('span');
-  glyph.className = 'rb-glyph';
-  glyph.textContent = '📖';
-  thumb.prepend(glyph);
 
   const text = document.createElement('div');
   text.className = 'rb-text';
   const label = document.createElement('div');
   label.className = 'rb-label';
-  label.textContent = 'Currently reading';
+  label.textContent = 'Now reading';
   const title = document.createElement('div');
   title.className = 'rb-title';
   title.textContent = book.title;
@@ -44,18 +41,18 @@ function build(root: HTMLElement, book: Book): HTMLElement {
   btns.className = 'rb-btns';
   const fin = document.createElement('button');
   fin.type = 'button';
-  fin.className = 'btn btn-hot btn-sm';
-  fin.textContent = 'Finished it!';
+  fin.className = 'rb-act';
+  fin.textContent = 'Finished it';
   const back = document.createElement('button');
   back.type = 'button';
-  back.className = 'btn btn-ghost btn-sm';
+  back.className = 'rb-act';
   back.textContent = 'Put back';
   btns.append(fin, back);
 
   fin.addEventListener('click', () => {
     const s = state.get(root);
     if (s) s.exit = 'finished';
-    burstFrom(fin, 'medium');
+    void sparks(rb, { burst: true });
     store.setStatus(book.id, 'finished');
   });
   back.addEventListener('click', () => {
@@ -65,21 +62,24 @@ function build(root: HTMLElement, book: Book): HTMLElement {
   });
 
   rb.append(thumb, text, btns);
-  const clip = document.createElement('div');
-  clip.className = 'rb-clip';
-  clip.append(rb);
-  wrap.append(clip);
+  wrap.append(rb);
   return wrap;
 }
 
 function leave(wrap: HTMLElement, exit: Exit): void {
-  wrap.classList.add('out', `out-${exit}`);
+  wrap.classList.add('out');
   wrap.querySelectorAll('button').forEach((b) => { b.disabled = true; });
-  void afterAnim(wrap, exit === 'finished' ? 700 : 450).then(() => wrap.remove());
+  if (reducedMotion()) {
+    wrap.remove();
+    return;
+  }
+  // "Finished it" lingers a beat so the spark burst can play before the line lifts away.
+  const kf = exit === 'putback' ? { opacity: 0, y: 10 } : { opacity: 0, y: -10 };
+  void play(wrap, kf, { duration: 0.3, delay: exit === 'finished' ? 0.45 : 0, ease: 'easeIn' }).then(() => wrap.remove());
 }
 
 /**
- * Show (or hide) the "Currently reading" banner in `root`. Safe to call on every store change:
+ * Show (or hide) the "Now reading" line in `root`. Safe to call on every store change:
  * it only re-renders when the shown book changes, and animates in/out.
  */
 export function renderReadingBanner(root: HTMLElement, book: Book | undefined): void {
@@ -89,13 +89,21 @@ export function renderReadingBanner(root: HTMLElement, book: Book | undefined): 
   if (!prev && !book) return;
 
   const current = root.querySelector<HTMLElement>('.rb-wrap:not(.out)');
-  if (current) leave(current, prev?.exit ?? 'plain');
+  if (current) {
+    // Swapping books: the old line leaves on top of the new one instead of stacking above it.
+    if (book) current.classList.add('swapped');
+    leave(current, prev?.exit ?? 'plain');
+  }
 
   if (book) {
     const wrap = build(root, book);
-    // A first paint with a book already reading shouldn't animate.
-    if (!prev) wrap.classList.add('still');
     root.append(wrap);
+    // A first paint with a book already reading shouldn't animate.
+    if (prev && !reducedMotion()) {
+      wrap.style.opacity = '0';
+      void play(wrap, { opacity: [0, 1], y: [-8, 0] }, { duration: 0.4, delay: current ? 0.25 : 0, ease: 'easeOut' })
+        .then(() => { wrap.style.opacity = '1'; });
+    }
   }
   state.set(root, { key, exit: 'plain' });
 }

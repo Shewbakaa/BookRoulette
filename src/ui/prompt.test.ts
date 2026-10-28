@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-vi.mock('./fx', () => ({ afterAnim: () => Promise.resolve() }));
+vi.mock('./fx', () => ({ reducedMotion: () => true, pressSpring: () => () => {}, afterAnim: () => Promise.resolve() }));
 const { askConfirm } = await import('./prompt');
 import { swapMessage } from '../reading';
 

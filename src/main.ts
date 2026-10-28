@@ -57,8 +57,8 @@ app.innerHTML = `
     <header class="top">
       <h1 class="brand">Book <i>Roulette</i></h1>
     </header>
-    <section id="reading-slot" class="reading-slot" aria-live="polite"></section>
     <nav id="filter"></nav>
+    <section id="reading-slot" class="reading-slot" aria-live="polite"></section>
     <section id="carousel" aria-label="Book roulette"></section>
     <footer class="controls">
       <button id="spin" class="spin-btn" type="button"><span>Spin</span></button>

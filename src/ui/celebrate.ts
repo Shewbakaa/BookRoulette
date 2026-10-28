@@ -3,7 +3,7 @@ import { store } from '../store';
 import { poolFor } from '../pick';
 import { spinAgain } from '../app';
 import { bookCard } from './bookCard';
-import { afterAnim, bigParty, burstFrom } from './fx';
+import { play, pressSpring, reducedMotion, sparks } from './fx';
 
 export interface CelebrationActions {
   /** "Yes, I've read it": mark finished. The overlay then offers Re-spin. */
@@ -33,94 +33,103 @@ const button = (cls: string, text: string): HTMLButtonElement => {
   return b;
 };
 
-/** Headline with each letter in its own span so they can bounce in one after another. */
-function headline(text: string): HTMLElement {
-  const h = el('h2', 'cele-title');
-  h.setAttribute('aria-label', text);
-  [...text].forEach((ch, i) => {
-    const s = el('span', ch === ' ' ? 'cele-ch sp' : 'cele-ch', ch);
-    s.setAttribute('aria-hidden', 'true');
-    s.style.setProperty('--i', String(i));
-    h.append(s);
-  });
-  return h;
-}
+const EYEBROW = "Tonight you're reading";
 
 /**
- * Full-screen "Your next read!" overlay. Only Close, Start reading, or Yes → Re-spin dismiss it
- * (no backdrop tap, no Escape) — it's their pick, it stays until they're done with it.
+ * Full-screen "Tonight you're reading" overlay. Only Close, Start reading, or Yes → Spin again
+ * dismiss it (no backdrop tap, no Escape) — it's their pick, it stays until they're done with it.
  */
 export function showCelebration(book: Book, actions: CelebrationActions): void {
   if (open) open.remove();
   const app = document.querySelector<HTMLElement>('#app');
   const prevFocus = document.activeElement as HTMLElement | null;
+  const still = reducedMotion();
 
   const root = el('div', 'cele');
   root.setAttribute('role', 'dialog');
   root.setAttribute('aria-modal', 'true');
-  root.setAttribute('aria-label', 'Your next read!');
+  root.setAttribute('aria-label', EYEBROW);
 
-  const rays = el('div', 'cele-rays');
-  rays.setAttribute('aria-hidden', 'true');
   const body = el('div', 'cele-body');
+  const eyebrow = el('p', 'cele-eyebrow', EYEBROW);
 
-  const title = headline('🎉 Your next read!');
-
+  // The cover sits in a warm pool of lamplight (.cele-stage::before).
   const stage = el('div', 'cele-stage');
   const card = bookCard(book);
   card.classList.add('cele-card');
-  const stamp = el('div', 'cele-stamp', 'Finished ✓');
+  const stamp = el('div', 'cele-stamp', 'Finished');
   stamp.setAttribute('aria-hidden', 'true');
   card.append(stamp);
-  const floater = el('div', 'cele-float');
-  floater.append(card);
-  stage.append(floater);
+  stage.append(card);
 
   const meta = el('div', 'cele-meta');
-  meta.append(el('div', 'cele-book', book.title), el('div', 'cele-author', book.author));
-  if (book.genre) meta.append(el('span', 'cele-genre', book.genre));
+  meta.append(
+    el('div', 'cele-book', book.title),
+    el('div', 'cele-author', book.genre ? `${book.author} · ${book.genre}` : book.author),
+  );
 
   // Panel 1: the question.
   const ask = el('div', 'cele-panel cele-ask');
+  const start = button('btn-primary', 'Start reading');
   const q = el('p', 'cele-q', 'Already read this one?');
-  const yes = button('btn-soft', "Yes, I've read it");
-  const start = button('btn-hot btn-big', 'Start reading');
-  const close = button('btn-ghost', 'Close');
-  const row = el('div', 'cele-row');
-  row.append(yes);
-  ask.append(start, q, row, close);
+  const yes = button('btn-secondary', 'Yes — set it aside & spin again');
+  const close = button('btn-tertiary cele-close', 'Close');
+  ask.append(start, q, yes, close);
 
   // Panel 2: after "Yes".
   const done = el('div', 'cele-panel cele-done');
   done.hidden = true;
   const doneMsg = el('p', 'cele-done-msg', 'Moved to Finished ✓');
   doneMsg.setAttribute('role', 'status');
-  const respin = button('btn-hot btn-big', '🎲 Re-spin');
-  const close2 = button('btn-ghost', 'Close');
+  const respin = button('btn-primary', 'Spin again');
+  const close2 = button('btn-tertiary cele-close', 'Close');
   done.append(doneMsg, respin, close2);
 
-  [title, stage, meta, ask].forEach((n, i) => n.style.setProperty('--d', String(i)));
-  body.append(title, stage, meta, ask, done);
-  // Rays stay put; the content scrolls on very short screens (centred via margin:auto, never clipped).
+  body.append(eyebrow, stage, meta, ask, done);
+  // The content scrolls on very short screens (centred via margin:auto, never clipped).
   const scroller = el('div', 'cele-scroll');
   scroller.append(body);
-  root.append(rays, scroller);
+  root.append(scroller);
   document.body.append(root);
   open = root;
   if (app) app.inert = true;
   document.body.classList.add('cele-open');
 
-  // Kick the entrance on the next frame so transitions run.
-  requestAnimationFrame(() => {
-    root.classList.add('on');
-    bigParty();
+  const springs = [start, yes, close, respin, close2].map((b) => {
+    b.classList.add('springy');
+    return pressSpring(b);
   });
+
+  if (!still) {
+    void play(root, { opacity: [0, 1] }, { duration: 0.3, ease: 'easeOut' });
+    void play(eyebrow, { opacity: [0, 1], y: [8, 0] }, { duration: 0.4, delay: 0.1, ease: 'easeOut' });
+    void play(
+      card,
+      { opacity: [0, 1], y: [60, 0], scale: [0.6, 1], rotate: [-6, 0] },
+      { type: 'spring', stiffness: 180, damping: 14, delay: 0.12 },
+      2500,
+    );
+    [meta, ask].forEach((n, i) =>
+      void play(n, { opacity: [0, 1], y: [14, 0] }, { duration: 0.45, delay: 0.4 + i * 0.12, ease: 'easeOut' }),
+    );
+  }
+  void sparks(root);
   start.focus({ preventScroll: true });
 
   let busy = false;
   const dismiss = async (how: 'close' | 'start' | 'respin'): Promise<void> => {
-    root.classList.add('out', `out-${how}`);
-    await afterAnim(root, how === 'start' ? 650 : 380);
+    root.classList.add('out');
+    if (!reducedMotion()) {
+      const cardOut =
+        how === 'start'
+          ? play(card, { y: -220, scale: 0.35, opacity: 0 }, { duration: 0.5, ease: [0.5, 0, 0.75, 0] })
+          : how === 'respin'
+            ? play(card, { scale: 0.3, rotate: 24, opacity: 0 }, { duration: 0.35, ease: [0.5, 0, 0.75, 0] })
+            : play(body, { y: 12, scale: 0.97 }, { duration: 0.3, ease: 'easeIn' });
+      const fade = play(root, { opacity: 0 }, { duration: 0.3, delay: how === 'start' ? 0.22 : 0, ease: 'easeIn' });
+      await Promise.all([cardOut, fade]);
+    }
+    springs.forEach((off) => off());
     root.remove();
     if (open === root) open = null;
     if (!open) {
@@ -157,7 +166,11 @@ export function showCelebration(book: Book, actions: CelebrationActions): void {
     ask.hidden = true;
     done.hidden = false;
     scroller.scrollTop = 0;
-    burstFrom(card, 'small');
+    if (!reducedMotion()) {
+      void play(stamp, { opacity: [0, 1], y: [10, 0] }, { type: 'spring', stiffness: 420, damping: 22 });
+      void play(done, { opacity: [0, 1], y: [10, 0] }, { duration: 0.35, ease: 'easeOut' });
+    }
+    void sparks(stage, { burst: true });
     respin.focus({ preventScroll: true });
   }));
 
@@ -170,7 +183,6 @@ export function showCelebration(book: Book, actions: CelebrationActions): void {
   root.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') e.preventDefault();
   });
-
 }
 
 /** For tests: is a celebration currently on screen? */

@@ -1,4 +1,4 @@
-import { afterAnim } from './fx';
+import { afterAnim, play, pressSpring, reducedMotion } from './fx';
 
 export interface ConfirmOptions {
   /** Message parts; strings are plain text, `{ em }` parts are emphasised. All set via textContent. */
@@ -34,16 +34,20 @@ export function askConfirm(opts: ConfirmOptions): Promise<boolean> {
     row.className = 'prompt-row';
     const cancel = document.createElement('button');
     cancel.type = 'button';
-    cancel.className = 'btn btn-ghost';
+    cancel.className = 'btn btn-secondary springy';
     cancel.textContent = opts.cancel;
     const ok = document.createElement('button');
     ok.type = 'button';
-    ok.className = 'btn btn-hot';
+    ok.className = 'btn btn-primary springy';
     ok.textContent = opts.ok;
     row.append(cancel, ok);
     box.append(p, row);
     back.append(box);
     document.body.append(back);
+    const springs = [cancel, ok].map(pressSpring);
+    if (!reducedMotion()) {
+      void play(box, { opacity: [0, 1], scale: [0.94, 1], y: [10, 0] }, { type: 'spring', stiffness: 420, damping: 30 });
+    }
     ok.focus({ preventScroll: true });
 
     let settled = false;
@@ -51,6 +55,7 @@ export function askConfirm(opts: ConfirmOptions): Promise<boolean> {
       if (settled) return;
       settled = true;
       document.removeEventListener('keydown', onKey);
+      springs.forEach((off) => off());
       back.classList.add('out');
       void afterAnim(back, 200).then(() => back.remove());
       resolve(v);
