@@ -112,4 +112,58 @@ describe('Store', () => {
     s.setItem('bookroulette.v1', '{"a":1}');
     expect(new Store(s).books().length).toBe(0);
   });
+
+  it('normalizes ISBNs so ISBN-10 and ISBN-13 collide', () => {
+    const { store } = mk();
+    const a = added(store, inp('Dune', '0441172717'));
+    expect(a.isbn).toBe('9780441172719');
+    const r = store.add(inp('Dune', '978-0-441-17271-9'));
+    expect(r.ok).toBe(false);
+  });
+  it('drops invalid ISBN on add', () => {
+    const { store } = mk();
+    expect(added(store, inp('X', '012345678905')).isbn).toBeUndefined();
+  });
+  it('update normalizes ISBN, drops invalid, refuses another book\'s ISBN', () => {
+    const { store } = mk();
+    const a = added(store, inp('A', '9780441172719'));
+    const b = added(store, inp('B'));
+    store.update(b.id, { isbn: '0441172717', title: 'B2' });
+    let bb = store.books().find(x => x.id === b.id)!;
+    expect(bb.isbn).toBeUndefined();
+    expect(bb.title).toBe('B2');
+    store.update(b.id, { isbn: '080442957X' });
+    bb = store.books().find(x => x.id === b.id)!;
+    expect(bb.isbn).toBe('9780804429573');
+    store.update(b.id, { isbn: 'bogus' });
+    expect(store.books().find(x => x.id === b.id)!.isbn).toBeUndefined();
+    expect(store.books().find(x => x.id === a.id)!.isbn).toBe('9780441172719');
+  });
+  it('import normalizes ISBNs and dedupes against them', () => {
+    const { store } = mk();
+    added(store, inp('A', '9780441172719'));
+    const book = { id: 'zz', title: 'A', author: 'a', genre: 'g', color: '#fff', addedAt: 1, status: 'unread', isbn: '0441172717' };
+    const json = JSON.stringify({ app: 'bookroulette', version: 1, books: [book] });
+    expect(store.importJson(json)).toEqual({ ok: true, added: 0 });
+  });
+  it('setStatus reading demotes previous reading book', () => {
+    const { store } = mk();
+    const a = added(store, inp('A'));
+    const b = added(store, inp('B'));
+    store.setStatus(a.id, 'reading');
+    store.setStatus(b.id, 'reading');
+    expect(store.books().filter(x => x.status === 'reading').map(x => x.id)).toEqual([b.id]);
+    expect(store.books().find(x => x.id === a.id)!.status).toBe('unread');
+  });
+  it('falls back to memory when localStorage access throws', () => {
+    const desc = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, get() { throw new Error('SecurityError'); } });
+    try {
+      const store = new Store();
+      expect(added(store, inp('A')).title).toBe('A');
+      expect(store.books().length).toBe(1);
+    } finally {
+      if (desc) Object.defineProperty(globalThis, 'localStorage', desc); else delete (globalThis as any).localStorage;
+    }
+  });
 });

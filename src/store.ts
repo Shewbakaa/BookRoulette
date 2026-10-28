@@ -1,4 +1,5 @@
 import type { Book, BookInput, BookStatus } from './types';
+import { normalizeIsbn } from './isbn';
 
 const KEY = 'bookroulette.v1';
 const PALETTE = ['#e6194b', '#f58231', '#ffe119', '#3cb44b', '#42d4f4', '#4363d8', '#911eb4', '#f032e6'];
@@ -18,6 +19,24 @@ function isBook(x: unknown): x is Book {
     (b.status === 'unread' || b.status === 'reading' || b.status === 'finished');
 }
 
+class MemoryStorage {
+  private m = new Map<string, string>();
+  getItem(k: string): string | null { return this.m.has(k) ? this.m.get(k)! : null; }
+  setItem(k: string, v: string): void { this.m.set(k, String(v)); }
+}
+
+// Safari can throw SecurityError just reading `localStorage` when storage is blocked.
+function defaultStorage(): Storage {
+  try {
+    const ls = globalThis.localStorage;
+    if (ls) {
+      ls.getItem(KEY);
+      return ls;
+    }
+  } catch { /* fall through */ }
+  return new MemoryStorage() as unknown as Storage;
+}
+
 export type AddResult = { ok: true; book: Book } | { ok: false; reason: 'duplicate'; existing: Book };
 
 export class Store {
@@ -26,7 +45,7 @@ export class Store {
   private storage: Storage | null;
 
   constructor(storage?: Storage) {
-    this.storage = storage ?? (typeof localStorage !== 'undefined' ? localStorage : null);
+    this.storage = storage ?? defaultStorage();
     this.load();
   }
 
@@ -54,8 +73,9 @@ export class Store {
   }
 
   add(input: BookInput): AddResult {
-    if (input.isbn) {
-      const existing = this.list.find(b => b.isbn === input.isbn);
+    const isbn = input.isbn ? normalizeIsbn(input.isbn) : null;
+    if (isbn) {
+      const existing = this.list.find(b => b.isbn === isbn);
       if (existing) return { ok: false, reason: 'duplicate', existing: { ...existing } };
     }
     const book: Book = {
@@ -66,7 +86,7 @@ export class Store {
       color: colorFor(input.title),
       status: 'unread',
       addedAt: Date.now(),
-      ...(input.isbn ? { isbn: input.isbn } : {}),
+      ...(isbn ? { isbn } : {}),
       ...(input.coverUrl ? { coverUrl: input.coverUrl } : {}),
     };
     this.list.push(book);
@@ -77,7 +97,14 @@ export class Store {
   update(id: string, patch: Partial<BookInput>): void {
     const b = this.list.find(x => x.id === id);
     if (!b) return;
-    Object.assign(b, patch);
+    const { isbn: rawIsbn, ...rest } = patch;
+    Object.assign(b, rest);
+    if ('isbn' in patch) {
+      const n = rawIsbn ? normalizeIsbn(rawIsbn) : null;
+      if (!n) delete b.isbn;
+      else if (!this.list.some(x => x.id !== id && x.isbn === n)) b.isbn = n;
+      // else: ISBN belongs to another book; keep this book's current ISBN unchanged.
+    }
     this.commit();
   }
 
@@ -90,6 +117,7 @@ export class Store {
   setStatus(id: string, s: BookStatus): void {
     const b = this.list.find(x => x.id === id);
     if (!b) return;
+    if (s === 'reading') { this.startReading(id); return; }
     this.apply(b, s);
     this.commit();
   }
@@ -134,8 +162,10 @@ export class Store {
     let added = 0;
     let reading = this.list.some(b => b.status === 'reading');
     for (const b of d.books as Book[]) {
-      if (ids.has(b.id) || (b.isbn && isbns.has(b.isbn))) continue;
       const copy = { ...b };
+      const n = copy.isbn ? normalizeIsbn(copy.isbn) : null;
+      if (n) copy.isbn = n; else delete copy.isbn;
+      if (ids.has(copy.id) || (copy.isbn && isbns.has(copy.isbn))) continue;
       if (copy.status === 'reading') {
         if (reading) { copy.status = 'unread'; delete copy.finishedAt; } else reading = true;
       }
