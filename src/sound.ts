@@ -19,7 +19,7 @@ function getCtx(): AudioContext | null {
 
 function ready(): AudioContext | null {
   if (sound.muted || !ctx) return null;
-  if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
+  if (ctx.state !== 'running' && ctx.state !== 'closed') void ctx.resume().catch(() => {});
   return ctx.state === 'closed' ? null : ctx;
 }
 
@@ -44,7 +44,8 @@ export const sound = {
   unlock(): void {
     const c = getCtx();
     if (!c) return;
-    if (c.state === 'suspended') void c.resume().catch(() => {});
+    // iOS can leave the context 'interrupted' after calls/backgrounding.
+    if (c.state !== 'running' && c.state !== 'closed') void c.resume().catch(() => {});
     try {
       const src = c.createBufferSource();
       src.buffer = c.createBuffer(1, 1, 22050);

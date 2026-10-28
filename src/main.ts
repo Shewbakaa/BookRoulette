@@ -54,6 +54,7 @@ const filter = createFilter(app.querySelector<HTMLElement>('#filter')!, (g) => {
 
 function updateButton(poolSize: number): void {
   spinBtn.disabled = spinning || poolSize === 0;
+  filter.setDisabled(spinning);
   spinBtn.classList.toggle('busy', spinning);
   poolNote.textContent = poolSize === 0 ? '' : `${poolSize} book${poolSize === 1 ? '' : 's'} in the mix`;
 }
@@ -71,12 +72,14 @@ async function doSpin(): Promise<Book | null> {
   if (!winner) return null;
   spinning = true;
   updateButton(pool.length);
+  let landed = false;
   try {
-    await carousel.spin(ringFor(pool, winner), winner);
+    landed = await carousel.spin(ringFor(pool, winner), winner);
   } finally {
     spinning = false;
     updateButton(poolFor(store.books(), genres).length);
   }
+  if (!landed) return null;
   emitSpinLanded(winner);
   return winner;
 }

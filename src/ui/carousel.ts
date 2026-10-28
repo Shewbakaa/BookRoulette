@@ -6,7 +6,8 @@ import { angleFromMatrix, facing, frontIndex, ringRadius } from './ringMath';
 
 export interface Carousel {
   render(books: Book[]): void;
-  spin(ring: Book[], winner: Book): Promise<void>;
+  /** Resolves true when the ring landed on the winner, false if it did not spin. */
+  spin(ring: Book[], winner: Book): Promise<boolean>;
 }
 
 const CARD_W_FALLBACK = 124;
@@ -157,8 +158,9 @@ export function createCarousel(root: HTMLElement): Carousel {
 
   const render = (books: Book[]): void => {
     if (spinning) { pending = books; return; }
-    if (keyOf(books) === shownKey) return;
+    // Cancel any in-flight fade first, so toggling a chip on→off quickly can't build the stale ring.
     clearTimeout(swapTimer);
+    if (keyOf(books) === shownKey) { fader.classList.remove('out'); return; }
     if (shownKey === null) { build(books); return; } // first paint: nothing moves
     root.classList.remove('landed');
     fader.classList.add('out');
@@ -169,98 +171,106 @@ export function createCarousel(root: HTMLElement): Carousel {
     }, reducedMotion() ? 0 : SWAP_MS);
   };
 
-  const spin = async (next: Book[], winner: Book): Promise<void> => {
-    if (spinning) return;
+  /** Resolves true once the ring has landed on `winner`; false if nothing spun. */
+  const spin = async (next: Book[], winner: Book): Promise<boolean> => {
+    if (spinning) return false;
     const wi = next.findIndex((b) => b.id === winner.id);
-    if (wi < 0 || next.length === 0) return;
+    if (wi < 0 || next.length === 0) return false;
     spinning = true;
-    clearTimeout(swapTimer);
-    fader.classList.remove('out');
-    root.classList.remove('landed');
-    slots.forEach((s) => s.face.classList.remove('winner'));
-
-    const n = next.length;
-    const reduced = reducedMotion();
-    const sameShape = slots.length === n && shownKey !== null;
-    if (!sameShape) build(next);
-
-    // rAF loop: tick when a new card reaches the front, shade by depth.
-    const tickN = Math.max(n, 4); // tiny rings still tick 4×/turn
-    let lastTick = frontIndex(angle, tickN);
     let raf = 0;
-    const loop = (): void => {
-      const a = liveAngle();
-      const idx = frontIndex(a, tickN);
-      if (idx !== lastTick) {
-        lastTick = idx;
-        sound.tick();
-        pointer.animate(
-          [{ transform: 'translateX(-50%) rotate(0)' }, { transform: 'translateX(-50%) rotate(-22deg)' }, { transform: 'translateX(-50%) rotate(0)' }],
-          { duration: 110, easing: 'ease-out' },
+    try {
+      clearTimeout(swapTimer);
+      fader.classList.remove('out');
+      root.classList.remove('landed');
+      slots.forEach((s) => s.face.classList.remove('winner'));
+
+      const n = next.length;
+      const reduced = reducedMotion();
+      const sameShape = slots.length === n && shownKey !== null;
+      if (!sameShape) build(next);
+
+      // rAF loop: tick when a new card reaches the front, shade by depth.
+      const tickN = Math.max(n, 4); // tiny rings still tick 4×/turn
+      let lastTick = frontIndex(angle, tickN);
+      const loop = (): void => {
+        const a = liveAngle();
+        const idx = frontIndex(a, tickN);
+        if (idx !== lastTick) {
+          lastTick = idx;
+          sound.tick();
+          pointer.animate(
+            [{ transform: 'translateX(-50%) rotate(0)' }, { transform: 'translateX(-50%) rotate(-22deg)' }, { transform: 'translateX(-50%) rotate(0)' }],
+            { duration: 110, easing: 'ease-out' },
+          );
+        }
+        shadeAll(a);
+        raf = requestAnimationFrame(loop);
+      };
+
+      root.classList.add('spinning');
+      if (!reduced) {
+        // Anticipation: lean back a little, then let it rip.
+        stage.classList.add('windup');
+        raf = requestAnimationFrame(loop);
+        await transitionTo(angle + 22, WINDUP_MS, 'cubic-bezier(.45,0,.55,1)');
+        stage.classList.remove('windup');
+      } else {
+        raf = requestAnimationFrame(loop);
+      }
+
+      const target = spinTargetAngle(angle, n, wi, reduced ? 1 : 5);
+      // Swap in the sampled ring while cards are a blur (same size → same geometry).
+      let swap = 0;
+      if (sameShape && keyOf(next) !== shownKey) {
+        swap = window.setTimeout(() => reassign(next), reduced ? 60 : 160);
+      }
+      await transitionTo(target, reduced ? REDUCED_MS : SPIN_MS, reduced ? 'cubic-bezier(.2,.7,.2,1)' : SPIN_EASE);
+      clearTimeout(swap);
+      if (keyOf(next) !== shownKey) reassign(next);
+      cancelAnimationFrame(raf);
+
+      // Normalise the angle (visually identical) so numbers stay small.
+      ring.style.transition = 'none';
+      setAngle(-((wi * 360) / n));
+      shadeAll(angle);
+      root.classList.remove('spinning');
+
+      // Settle: winner pops and glows, burst ring, rising arpeggio.
+      const win = slots[wi];
+      win.face.classList.add('winner');
+      root.classList.add('landed');
+      sound.land();
+      if (!reduced) {
+        win.face.animate(
+          [
+            { transform: 'scale(1)' },
+            { transform: 'scale(1.13)', offset: 0.3 },
+            { transform: 'scale(0.98)', offset: 0.6 },
+            { transform: 'scale(1.03)', offset: 0.8 },
+            { transform: 'scale(1)' },
+          ],
+          { duration: 750, easing: 'ease-out' },
+        );
+        burst.animate(
+          [
+            { transform: 'translate(-50%,-50%) scale(.5)', opacity: 0.9 },
+            { transform: 'translate(-50%,-50%) scale(1.9)', opacity: 0 },
+          ],
+          { duration: 700, easing: 'cubic-bezier(.2,.7,.3,1)' },
         );
       }
-      shadeAll(a);
-      raf = requestAnimationFrame(loop);
-    };
 
-    root.classList.add('spinning');
-    if (!reduced) {
-      // Anticipation: lean back a little, then let it rip.
-      stage.classList.add('windup');
-      raf = requestAnimationFrame(loop);
-      await transitionTo(angle + 22, WINDUP_MS, 'cubic-bezier(.45,0,.55,1)');
+      return true;
+    } finally {
+      cancelAnimationFrame(raf);
       stage.classList.remove('windup');
-    } else {
-      raf = requestAnimationFrame(loop);
-    }
-
-    const target = spinTargetAngle(angle, n, wi, reduced ? 1 : 5);
-    // Swap in the sampled ring while cards are a blur (same size → same geometry).
-    let swap = 0;
-    if (sameShape && keyOf(next) !== shownKey) {
-      swap = window.setTimeout(() => reassign(next), reduced ? 60 : 160);
-    }
-    await transitionTo(target, reduced ? REDUCED_MS : SPIN_MS, reduced ? 'cubic-bezier(.2,.7,.2,1)' : SPIN_EASE);
-    clearTimeout(swap);
-    if (keyOf(next) !== shownKey) reassign(next);
-    cancelAnimationFrame(raf);
-
-    // Normalise the angle (visually identical) so numbers stay small.
-    ring.style.transition = 'none';
-    setAngle(-((wi * 360) / n));
-    shadeAll(angle);
-    root.classList.remove('spinning');
-
-    // Settle: winner pops and glows, burst ring, rising arpeggio.
-    const win = slots[wi];
-    win.face.classList.add('winner');
-    root.classList.add('landed');
-    sound.land();
-    if (!reduced) {
-      win.face.animate(
-        [
-          { transform: 'scale(1)' },
-          { transform: 'scale(1.13)', offset: 0.3 },
-          { transform: 'scale(0.98)', offset: 0.6 },
-          { transform: 'scale(1.03)', offset: 0.8 },
-          { transform: 'scale(1)' },
-        ],
-        { duration: 750, easing: 'ease-out' },
-      );
-      burst.animate(
-        [
-          { transform: 'translate(-50%,-50%) scale(.5)', opacity: 0.9 },
-          { transform: 'translate(-50%,-50%) scale(1.9)', opacity: 0 },
-        ],
-        { duration: 700, easing: 'cubic-bezier(.2,.7,.3,1)' },
-      );
-    }
-
-    spinning = false;
-    if (pending) {
-      const p = pending;
-      pending = null;
-      render(p);
+      root.classList.remove('spinning');
+      spinning = false;
+      if (pending) {
+        const p = pending;
+        pending = null;
+        render(p);
+      }
     }
   };
 

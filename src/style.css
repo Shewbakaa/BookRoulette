@@ -76,6 +76,8 @@ button { font: inherit; color: inherit; }
   scroll-padding: 0 16px;
 }
 .filter::-webkit-scrollbar { display: none; }
+.filter.disabled .chip { pointer-events: none; opacity: 0.45; }
+.filter.disabled .chip.on { opacity: 0.7; }
 
 .chip {
   flex: none;
@@ -252,7 +254,6 @@ button { font: inherit; color: inherit; }
   inset: 0;
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
-  -webkit-box-reflect: below 8px linear-gradient(transparent 68%, rgba(255, 255, 255, 0.22));
 }
 
 .car-face {

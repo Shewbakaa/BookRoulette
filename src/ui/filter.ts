@@ -5,6 +5,8 @@ export interface Filter {
   /** Rebuild chips from the library (keeps the selection where still valid). */
   update(books: Book[]): void;
   selected(): Set<string>;
+  /** Locks the chips (e.g. while the roulette spins). */
+  setDisabled(on: boolean): void;
 }
 
 /** Horizontally scrollable, multi-select genre chips. "All" clears the selection. */
@@ -31,20 +33,24 @@ export function createFilter(root: HTMLElement, onChange: (genres: Set<string>) 
   };
 
   let books: Book[] = [];
-  const draw = (): void => {
+  /** Returns true if a selected genre vanished from the library and was dropped. */
+  const draw = (): boolean => {
     const counts = new Map<string, number>();
     for (const b of books) if (b.status === 'unread') counts.set(b.genre, (counts.get(b.genre) ?? 0) + 1);
     const genres = allGenres(books);
-    for (const g of [...sel]) if (!genres.includes(g)) sel.delete(g);
+    let pruned = false;
+    for (const g of [...sel]) if (!genres.includes(g)) { sel.delete(g); pruned = true; }
     const scroll = root.scrollLeft;
     root.replaceChildren(
       chip('All', '', null, sel.size === 0),
       ...genres.map((g) => chip(g, g, counts.get(g) ?? 0, sel.has(g))),
     );
     root.scrollLeft = scroll;
+    return pruned;
   };
 
   root.addEventListener('click', (e) => {
+    if (root.getAttribute('aria-disabled') === 'true') return;
     const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button.chip');
     if (!b || !root.contains(b)) return;
     const g = b.dataset.genre ?? '';
@@ -58,7 +64,14 @@ export function createFilter(root: HTMLElement, onChange: (genres: Set<string>) 
   });
 
   return {
-    update(next) { books = next; draw(); },
+    update(next) {
+      books = next;
+      if (draw()) onChange(new Set(sel));
+    },
+    setDisabled(on) {
+      root.setAttribute('aria-disabled', String(on));
+      root.classList.toggle('disabled', on);
+    },
     selected: () => new Set(sel),
   };
 }
