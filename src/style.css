@@ -1001,3 +1001,36 @@ button { font: inherit; color: inherit; }
 .bf-card .bc-title, .dupe-card .bc-title, .fly-card .bc-title { font-size: 13px; -webkit-line-clamp: 4; }
 .bf-card .bc-fallback, .dupe-card .bc-fallback, .fly-card .bc-fallback { padding: 10px 8px 10px 14px; }
 .bf-card .bc-author, .dupe-card .bc-author, .fly-card .bc-author { font-size: 10px; }
+
+/* ---------- library / finished / backup ---------- */
+.sheet-list .sheet-body { display: flex; flex-direction: column; gap: 10px; min-height: 160px; }
+.lib-search { width: 100%; }
+.lib-list { display: flex; flex-direction: column; gap: 8px; }
+.lib-genre {
+  margin: 10px 2px 0;
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--glow);
+}
+.lib-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.07);
+  animation: item-in 0.4s cubic-bezier(0.25, 1.5, 0.45, 1) calc(var(--i, 0) * 0.03s) backwards;
+}
+.lib-dot { width: 10px; align-self: stretch; border-radius: 6px; flex: none; }
+.lib-info { flex: 1 1 140px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.lib-title { font-weight: 800; font-size: 16px; overflow-wrap: anywhere; }
+.lib-author, .lib-date { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.lib-date { color: var(--glow); }
+.lib-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-left: 22px; width: 100%; }
+.lib-del { color: #ff9a8a; }
+.list-empty, .list-note { text-align: center; color: var(--muted); margin: 18px 4px; line-height: 1.4; }
+.backup-btns { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 8px 0 12px; }

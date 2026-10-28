@@ -13,7 +13,9 @@ import { reducedMotion } from './ui/fx';
 import { needsSwap, swapMessage } from './reading';
 import { createDrawer } from './ui/drawer';
 import { openAddBook } from './ui/addBook';
-import { toast } from './ui/toast';
+import { openLibrary } from './ui/library';
+import { openFinished } from './ui/finished';
+import { openBackup, importBackup } from './ui/backup';
 
 export { onSpinLanded, spinAgain } from './app';
 
@@ -132,13 +134,12 @@ filter.update(store.books());
 refresh();
 renderReadingBanner(readingSlot, store.current());
 
-// Menu drawer. Library / Finished / Backup are stubs until Task 8 replaces their open().
-const soon = (): void => { toast('Coming soon', 'info'); };
+// Menu drawer.
 createDrawer([
   { label: 'Add book', icon: '➕', open: () => { openAddBook(); } },
-  { label: 'Library', icon: '📚', open: soon },
-  { label: 'Finished', icon: '🏆', open: soon },
-  { label: 'Backup', icon: '💾', open: soon },
+  { label: 'Library', icon: '📚', open: () => openLibrary() },
+  { label: 'Finished', icon: '🏆', open: () => openFinished() },
+  { label: 'Backup', icon: '💾', open: () => openBackup() },
   {
     label: () => (sound.muted ? 'Sound: off' : 'Sound: on'),
     icon: () => (sound.muted ? '🔇' : '🔊'),
@@ -151,6 +152,7 @@ createDrawer([
 ]);
 
 if (import.meta.env.DEV) {
+  (window as unknown as { __testIsbn: (isbn: string) => void; __import: (t: string) => void }).__import = importBackup;
   (window as unknown as { __testIsbn: (isbn: string) => void }).__testIsbn = (isbn: string) => {
     openAddBook({ isbn });
   };
