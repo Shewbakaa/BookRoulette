@@ -37,11 +37,15 @@ describe('lookupIsbn', () => {
     const g = { totalItems: 1, items: [{ volumeInfo: { title: 'T', authors: ['X'] } }] };
     const f = (async () => json(g)) as unknown as typeof fetch;
     const r = await lookupIsbn(ISBN, f);
-    expect(r!.coverUrl).toBe(`https://covers.openlibrary.org/b/isbn/${ISBN}-L.jpg`);
+    expect(r!.coverUrl).toBe(`https://covers.openlibrary.org/b/isbn/${ISBN}-L.jpg?default=false`);
   });
   it('null when both have nothing', async () => {
     const f = (async (u: string) => u.includes('googleapis') ? json({ totalItems: 0 }) : json({})) as unknown as typeof fetch;
     expect(await lookupIsbn(ISBN, f)).toBeNull();
+  });
+  it('falls through to null when JSON is malformed', async () => {
+    const bad = (() => Promise.resolve({ ok: true, json: () => Promise.reject(new SyntaxError('bad')) } as Response)) as unknown as typeof fetch;
+    expect(await lookupIsbn(ISBN, bad)).toBeNull();
   });
   it('null when fetch rejects or is not ok', async () => {
     expect(await lookupIsbn(ISBN, (() => Promise.reject(new Error('offline'))) as unknown as typeof fetch)).toBeNull();

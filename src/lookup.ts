@@ -23,7 +23,7 @@ async function fromGoogle(isbn: string, f: typeof fetch): Promise<BookInput | nu
     title: String(v.title),
     author: Array.isArray(v.authors) ? v.authors.join(', ') : '',
     genre: normalizeGenre(Array.isArray(v.categories) ? v.categories : []),
-    coverUrl: thumb ?? `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`,
+    coverUrl: thumb ?? `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg?default=false`,
   };
 }
 
@@ -38,7 +38,7 @@ async function fromOpenLibrary(isbn: string, f: typeof fetch): Promise<BookInput
     title: String(d.title),
     author: authors.join(', '),
     genre: normalizeGenre(subjects),
-    coverUrl: https(d.cover?.large ?? d.cover?.medium) ?? `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg`,
+    coverUrl: https(d.cover?.large ?? d.cover?.medium) ?? `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg?default=false`,
   };
 }
 

@@ -14,6 +14,9 @@ describe('normalizeGenre', () => {
     expect(normalizeGenre(['Detective and mystery stories'])).toBe('Mystery/Thriller');
     expect(normalizeGenre(['Self-Help'])).toBe('Self-help');
     expect(normalizeGenre(['Fiction / General'])).toBe('Fiction');
+    expect(normalizeGenre(['Juvenile Nonfiction / Animals'])).toBe('Non-fiction');
+    expect(normalizeGenre(['Non-fiction'])).toBe('Non-fiction');
+    expect(normalizeGenre(['Warsaw travel'])).toBe('Other');
     expect(normalizeGenre(['Business & Economics'])).toBe('Non-fiction');
   });
   it('Other for no match or empty', () => {

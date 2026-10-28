@@ -13,9 +13,9 @@ const RULES: [string, RegExp][] = [
   ['Romance', /romance|love stor/],
   ['Memoir/Biography', /biograph|memoir|autobiograph/],
   ['Self-help', /self-help|self help|personal development|self-improvement|self improvement/],
-  ['History', /history|historical|war\b/],
-  ['Fiction', /fiction|novel|stories|literature/],
+  ['History', /history|historical|\bwar\b/],
   ['Non-fiction', /non-?fiction|business|economics|science|psychology|philosophy|politic|religion|social science|technology|essays/],
+  ['Fiction', /fiction|novel|stories|literature/],
 ];
 
 /** Maps raw category/subject strings to one app genre; first matching rule wins. */
