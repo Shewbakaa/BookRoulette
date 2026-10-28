@@ -43,7 +43,14 @@ describe('lookupIsbn', () => {
     const f = (async (u: string) => u.includes('googleapis') ? json({ totalItems: 0 }) : json({})) as unknown as typeof fetch;
     expect(await lookupIsbn(ISBN, f)).toBeNull();
   });
-  it('falls through to null when JSON is malformed', async () => {
+  it('falls through to Open Library when Google JSON is malformed', async () => {
+    const f = ((u: string) => u.includes('googleapis')
+      ? Promise.resolve({ ok: true, json: () => Promise.reject(new SyntaxError('bad')) } as Response)
+      : json(ol)) as unknown as typeof fetch;
+    const r = await lookupIsbn(ISBN, f);
+    expect(r).toMatchObject({ title: 'OL Title', author: 'A One, B Two' });
+  });
+  it('null when all JSON is malformed', async () => {
     const bad = (() => Promise.resolve({ ok: true, json: () => Promise.reject(new SyntaxError('bad')) } as Response)) as unknown as typeof fetch;
     expect(await lookupIsbn(ISBN, bad)).toBeNull();
   });

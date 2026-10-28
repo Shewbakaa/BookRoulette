@@ -16,6 +16,8 @@ describe('normalizeGenre', () => {
     expect(normalizeGenre(['Fiction / General'])).toBe('Fiction');
     expect(normalizeGenre(['Juvenile Nonfiction / Animals'])).toBe('Non-fiction');
     expect(normalizeGenre(['Non-fiction'])).toBe('Non-fiction');
+    expect(normalizeGenre(['Fiction / Political'])).toBe('Fiction');
+    expect(normalizeGenre(['Fiction / Business'])).toBe('Fiction');
     expect(normalizeGenre(['Warsaw travel'])).toBe('Other');
     expect(normalizeGenre(['Business & Economics'])).toBe('Non-fiction');
   });
