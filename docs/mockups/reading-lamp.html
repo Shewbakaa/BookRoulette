@@ -30,7 +30,7 @@ h1{margin:0;font:400 30px 'Instrument Serif',serif}h1 i{color:var(--brass)}
 .cv:nth-child(1){transform:rotateY(-40deg) translateZ(130px);filter:brightness(.6)}
 .cv:nth-child(2){transform:translateZ(150px)}
 .cv:nth-child(3){transform:rotateY(40deg) translateZ(130px);filter:brightness(.6)}
-.tick{position:absolute;top:30px;width:2px;height:16px;background:var(--brass);box-shadow:0 0 8px var(--brass)}
+.tick{position:absolute;top:14px;left:50%;width:22px;height:26px;transform:translateX(-50%);transform-origin:50% 4px;filter:drop-shadow(0 3px 3px #0008);z-index:2}
 .spin{margin:0 auto 12px;width:92px;height:92px;border-radius:50%;border:0;background:radial-gradient(circle at 35% 30%,#f0c876,#b07d2a 60%,#6d4c17);color:#2a1b06;font:400 22px 'Instrument Serif';box-shadow:0 2px 0 #fff4 inset,0 -3px 6px #0006 inset,0 10px 24px -6px #000}
 .meta{text-align:center;font-size:10px;color:var(--dim);margin-bottom:20px;letter-spacing:.14em;text-transform:uppercase}
 /* celebration */
@@ -61,7 +61,7 @@ h1{margin:0;font:400 30px 'Instrument Serif',serif}h1 i{color:var(--brass)}
   <header><h1>Book <i>Roulette</i></h1><button class="menu">≡</button></header>
   <div class="chips"><span class="on">All<sup>8</sup></span><span>Fantasy<sup>2</sup></span><span>Sci‑Fi<sup>2</sup></span><span>Romance<sup>1</sup></span></div>
   <div class="reading"><div class="mini"></div><div><small>Now reading</small><b>Circe</b></div><span class="act">Finished it</span></div>
-  <div class="stage"><div class="tick"></div><div class="ring"><div class="cv" style="background:#d9692b">DUNE<small>Frank Herbert</small></div><div class="cv" style="background:#2f4a3a">Pride &amp; Prejudice<small>Jane Austen</small></div><div class="cv" style="background:#1e2a44">The Hobbit<small>J.R.R. Tolkien</small></div></div></div>
+  <div class="stage"><svg class="tick" viewBox="0 0 22 26" aria-hidden="true"><defs><linearGradient id="br" x1="0" x2="1"><stop offset="0" stop-color="#f0c876"/><stop offset=".55" stop-color="#c8963c"/><stop offset="1" stop-color="#7a531a"/></linearGradient></defs><circle cx="11" cy="5" r="4" fill="#6d4c17"/><path d="M3 5h16L11 25z" fill="url(#br)"/><circle cx="11" cy="5" r="2" fill="#2a1b06"/></svg><div class="ring"><div class="cv" style="background:#d9692b">DUNE<small>Frank Herbert</small></div><div class="cv" style="background:#2f4a3a">Pride &amp; Prejudice<small>Jane Austen</small></div><div class="cv" style="background:#1e2a44">The Hobbit<small>J.R.R. Tolkien</small></div></div></div>
   <button class="spin">Spin</button><div class="meta">7 unread on the shelf</div>
  </div><div class="label">Main</div></div>
 
@@ -92,6 +92,7 @@ h1{margin:0;font:400 30px 'Instrument Serif',serif}h1 i{color:var(--brass)}
 </div>
 <script type="module">
 import { animate, stagger } from "https://cdn.jsdelivr.net/npm/motion@11.18.2/+esm";
+animate(".tick",{rotate:[0,-14,0]},{duration:.25,repeat:Infinity,repeatDelay:.6});
 animate(".spark",{opacity:[0,1,0],y:[0,-30]},{duration:2.4,repeat:Infinity,delay:stagger(.35)});
 animate(".cel .big",{rotate:[-6,0],scale:[.6,1],opacity:[0,1]},{type:"spring",stiffness:180,damping:14});
 animate(".item",{opacity:[0,1],y:[12,0]},{delay:stagger(.06,{startDelay:.2})});

@@ -51,7 +51,7 @@ They chose direction **C · Reading Lamp** from the mockups (`.superpowers/brain
   - Book covers have small corner radii and deep soft drop shadows.
   - Books away from the front darken, as if they're out of the lamplight.
   - A soft floor shadow sits under the ring.
-  - A thin brass tick mark sits at the top center as the pointer.
+  - A brass **pointer icon** sits at the top center: a small downward-pointing brass wedge on a pivot pin (like a prize-wheel flapper), with metallic shading and a soft drop shadow. The user asked for an icon instead of a plain line.
   - Fallback colored cards use muted, book-cloth colors (not neon), with serif titles.
 - **Spin:** a round brass push-button about 92px across, with a serif "Spin" label, an inset highlight, and a bottom shade. A tracked caption sits below it.
 - **Celebration:**
@@ -69,7 +69,7 @@ They chose direction **C · Reading Lamp** from the mockups (`.superpowers/brain
 ## Motion
 
 - **Library:** Motion `animate` with spring physics. Press: scale to about 0.93 with a stiff spring, released with a softer spring. Never more than a small overshoot.
-- **Spin:** keep the existing angle math (`spinTargetAngle`, ring logic). The builder may drive the ring with Motion or keep a CSS transition, but it must feel weighty: a slight wind-back for anticipation, a long ease-out, and a gentle settle on the winner. The tick mark nudges as each book passes, and the tick sound is kept.
+- **Spin:** keep the existing angle math (`spinTargetAngle`, ring logic). The builder may drive the ring with Motion or keep a CSS transition, but it must feel weighty: a slight wind-back for anticipation, a long ease-out, and a gentle settle on the winner. The pointer flicks on its pivot as each book passes, and the tick sound is kept.
 - **Celebration:**
   - The card rises and scales in on a spring.
   - About 20–30 warm sparks (`#ffd98a`, small glowing dots) drift slowly upward and fade, like dust in lamplight, staggered over about 2.5s. They're DOM or CSS, driven by Motion; there's no confetti library.
@@ -97,7 +97,7 @@ They chose direction **C · Reading Lamp** from the mockups (`.superpowers/brain
 - **Visual source of truth:** `docs/mockups/reading-lamp.html` (main / celebration / menu sheet) is binding for spacing, type sizes, Spin shading, sheet rows, cover shadows. Extract values from it; where the doc and mockup disagree, the mockup wins.
 - **Scan screen:** camera viewfinder with four thin brass corner brackets (no glowing frame), muted hint "Point at the barcode on the back", a slow 1px brass scan line. **Looking up:** a muted cover-shaped placeholder with a slow opacity breathe + "Looking it up…" in italic serif — no spinner. **Duplicate:** serif "Already on your shelf" + the book's mini card.
 - **Spin timing:** normal spin stays ~5s total; reduced motion ≤1.2s. Final angle always comes from `spinTargetAngle`; the wind-back (≈-8° over ~180ms) is a prelude before the main move. Builder may move the ring to Motion; `ringMath` tests stay valid.
-- **Tick nudge:** carousel already reads the live angle per frame for the tick sound — reuse it to nudge the tick mark.
+- **Tick nudge:** carousel already reads the live angle per frame for the tick sound — reuse it to flick the pointer icon on its pivot.
 - **Tests:** keep existing DOM structure / class names that tests rely on and restyle in place; update tests that assert confetti to assert sparks instead.
 - **Reduced motion:** read at call time via the existing `reducedMotion()` helper; all Motion calls go through it. No live-toggle support needed.
 - **Dark only:** `color-scheme: dark`; manifest `background_color`/`theme_color`, `theme-color` meta and apple status bar updated to `#0f0d0a`; icons restyled to brass-on-walnut to match.
