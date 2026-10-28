@@ -11,6 +11,9 @@ import { renderReadingBanner } from './ui/readingBanner';
 import { askConfirm } from './ui/prompt';
 import { reducedMotion } from './ui/fx';
 import { needsSwap, swapMessage } from './reading';
+import { createDrawer } from './ui/drawer';
+import { openAddBook } from './ui/addBook';
+import { toast } from './ui/toast';
 
 export { onSpinLanded, spinAgain } from './app';
 
@@ -128,3 +131,27 @@ store.subscribe(() => {
 filter.update(store.books());
 refresh();
 renderReadingBanner(readingSlot, store.current());
+
+// Menu drawer. Library / Finished / Backup are stubs until Task 8 replaces their open().
+const soon = (): void => { toast('Coming soon', 'info'); };
+createDrawer([
+  { label: 'Add book', icon: '➕', open: () => { openAddBook(); } },
+  { label: 'Library', icon: '📚', open: soon },
+  { label: 'Finished', icon: '🏆', open: soon },
+  { label: 'Backup', icon: '💾', open: soon },
+  {
+    label: () => (sound.muted ? 'Sound: off' : 'Sound: on'),
+    icon: () => (sound.muted ? '🔇' : '🔊'),
+    stay: true,
+    open: () => {
+      sound.toggle();
+      if (!sound.muted) { sound.unlock(); sound.land(); }
+    },
+  },
+]);
+
+if (import.meta.env.DEV) {
+  (window as unknown as { __testIsbn: (isbn: string) => void }).__testIsbn = (isbn: string) => {
+    openAddBook({ isbn });
+  };
+}

@@ -4,7 +4,8 @@ import { normalizeIsbn } from './isbn';
 const KEY = 'bookroulette.v1';
 const PALETTE = ['#e6194b', '#f58231', '#ffe119', '#3cb44b', '#42d4f4', '#4363d8', '#911eb4', '#f032e6'];
 
-function colorFor(title: string): string {
+/** Deterministic card colour for a title (also used for add-form previews). */
+export function colorFor(title: string): string {
   let h = 0;
   for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) >>> 0;
   return PALETTE[h % PALETTE.length];
