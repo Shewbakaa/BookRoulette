@@ -11,6 +11,7 @@ const spinAgain = vi.fn(() => Promise.resolve(null));
 vi.mock('../app', () => ({ spinAgain: () => spinAgain() }));
 
 const { showCelebration, celebrationOpen } = await import('./celebrate');
+const { store } = await import('../store');
 
 const book: Book = {
   id: 'b1', title: '<img src=x onerror=alert(1)>', author: 'Auth', genre: 'Fantasy',
@@ -63,6 +64,7 @@ describe('showCelebration', () => {
   });
 
   it('Yes marks read, stays open with Re-spin, and Re-spin closes then spins', async () => {
+    store.add({ title: 'Other', author: 'O', genre: 'Fantasy' });
     const a = actions();
     showCelebration(book, a);
     btn("Yes, I've read it").click();
@@ -75,6 +77,15 @@ describe('showCelebration', () => {
     expect(celebrationOpen()).toBe(false);
     expect(spinAgain).toHaveBeenCalledOnce();
     expect(a.onClose).not.toHaveBeenCalled();
+  });
+
+  it('Yes with no unread books left hides Re-spin and says so', async () => {
+    for (const b of store.books()) store.remove(b.id);
+    showCelebration(book, actions());
+    btn("Yes, I've read it").click();
+    await flush();
+    expect(document.querySelector('.cele-empty')!.textContent).toBe('No books left — add some!');
+    expect(btn('🎲 Re-spin')).toBeUndefined();
   });
 
   it('Start reading closes unless the action returns false', async () => {

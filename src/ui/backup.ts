@@ -3,17 +3,28 @@ import { backupFilename } from '../listLogic';
 import { openSheet } from './drawer';
 import { toast } from './toast';
 
-export function exportBackup(): void {
-  const blob = new Blob([store.exportJson()], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
+export async function exportBackup(): Promise<void> {
+  const json = store.exportJson();
+  const name = backupFilename(new Date());
+  const file = new File([json], name, { type: 'application/json' });
+  if (navigator.canShare?.({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file] });
+      toast('Backup ready', 'ok');
+    } catch (e) {
+      if ((e as { name?: string })?.name !== 'AbortError') toast('Could not share the backup', 'warn');
+    }
+    return;
+  }
+  const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
   const a = document.createElement('a');
   a.href = url;
-  a.download = backupFilename(new Date());
+  a.download = name;
   document.body.append(a);
   a.click();
   a.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 4000);
-  toast('Backup saved', 'ok');
+  window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+  toast('Backup ready', 'ok');
 }
 
 export function importBackup(text: string): void {
@@ -26,12 +37,12 @@ export function openBackup(): void {
   const sheet = openSheet({ title: 'Backup', className: 'sheet-list' });
   const note = document.createElement('p');
   note.className = 'list-note';
-  note.textContent = 'Your books live only on this device. Export a file to keep them safe, or import one to restore.';
+  note.textContent = 'Your books live only on this device. Export a file to keep them safe, or import one to restore. On iPhone, use BookRoulette from your Home Screen icon (Safari tabs and the Home Screen app keep separate libraries). Export a backup now and then.';
   const exp = document.createElement('button');
   exp.type = 'button';
   exp.className = 'btn btn-hot btn-big';
   exp.textContent = 'Export';
-  exp.addEventListener('click', exportBackup);
+  exp.addEventListener('click', () => { void exportBackup(); });
   const imp = document.createElement('button');
   imp.type = 'button';
   imp.className = 'btn btn-soft btn-big';

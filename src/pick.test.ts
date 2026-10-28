@@ -54,12 +54,14 @@ describe('ringFor', () => {
     const pool = [mk(1), mk(2), mk(3)];
     expect(ringFor(pool, pool[1], mulberry32(1))).toHaveLength(3);
   });
-  it('no winner: stable, first 12 by addedAt asc', () => {
+  it('no winner: stable, 12 newest by addedAt desc', () => {
     const pool = Array.from({ length: 30 }, (_, i) => mk(i));
     const a = ringFor(pool, null);
     expect(a).toHaveLength(12);
     expect(a.map((b) => b.id)).toEqual(ringFor([...pool].reverse(), null).map((b) => b.id));
-    expect(a[0].addedAt).toBeLessThanOrEqual(a[1].addedAt);
+    expect(a[0].addedAt).toBeGreaterThanOrEqual(a[1].addedAt);
+    const newest = mk(99, { addedAt: 5000 });
+    expect(ringFor([...pool, newest], null)[0].id).toBe('b99');
   });
 });
 

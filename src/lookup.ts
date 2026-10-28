@@ -3,13 +3,26 @@ import { normalizeGenre } from './genres';
 
 const https = (u?: string): string | undefined => (u ? u.replace(/^http:\/\//i, 'https://') : undefined);
 
+export const LOOKUP_TIMEOUT_MS = 6000;
+
 async function getJson(url: string, f: typeof fetch): Promise<any | null> {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), LOOKUP_TIMEOUT_MS);
+  // Race so a fetch that ignores the signal still times out.
+  const timeout = new Promise<null>((resolve) => ctl.signal.addEventListener('abort', () => resolve(null)));
   try {
-    const res = await f(url);
-    if (!res.ok) return null;
-    return await res.json();
+    return await Promise.race([
+      (async () => {
+        const res = await f(url, { signal: ctl.signal });
+        if (!res.ok) return null;
+        return await res.json();
+      })(),
+      timeout,
+    ]);
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

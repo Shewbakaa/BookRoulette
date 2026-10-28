@@ -1,4 +1,6 @@
 import type { Book } from '../types';
+import { store } from '../store';
+import { poolFor } from '../pick';
 import { spinAgain } from '../app';
 import { bookCard } from './bookCard';
 import { afterAnim, bigParty, burstFrom } from './fx';
@@ -10,6 +12,8 @@ export interface CelebrationActions {
   onStartReading(): void | boolean | Promise<void | boolean>;
   /** The Close button was used. */
   onClose(): void;
+  /** Genres currently filtered on; empty/undefined = all. Used to decide whether Re-spin makes sense. */
+  genres?(): Set<string>;
   /** Re-spin after "Yes" (runs after the overlay has animated out). Defaults to app.spinAgain. */
   onRespin?(): void;
 }
@@ -143,6 +147,12 @@ export function showCelebration(book: Book, actions: CelebrationActions): void {
 
   yes.addEventListener('click', guard(() => {
     actions.onAlreadyRead();
+    if (poolFor(store.books(), actions.genres?.() ?? new Set()).length === 0) {
+      respin.hidden = true;
+      const empty = el('p', 'cele-done-msg cele-empty', 'No books left — add some!');
+      empty.setAttribute('role', 'status');
+      doneMsg.after(empty);
+    }
     root.classList.add('finished');
     ask.hidden = true;
     done.hidden = false;

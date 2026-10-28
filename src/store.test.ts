@@ -166,4 +166,30 @@ describe('Store', () => {
       if (desc) Object.defineProperty(globalThis, 'localStorage', desc); else delete (globalThis as any).localStorage;
     }
   });
+  it('persistent() true with working storage; false and notifies when a write fails', () => {
+    const { s, store } = mk();
+    expect(store.persistent()).toBe(true);
+    let errs = 0;
+    store.onSaveError(() => errs++);
+    s.setItem = () => { throw new Error('quota'); };
+    added(store, inp('Dune'));
+    expect(errs).toBe(1);
+    expect(store.persistent()).toBe(false);
+    expect(store.books()).toHaveLength(1);
+  });
+  it('persistent() false with in-memory fallback', () => {
+    const orig = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+    Object.defineProperty(globalThis, 'localStorage', { configurable: true, get() { throw new Error('SecurityError'); } });
+    try { expect(new Store().persistent()).toBe(false); }
+    finally { if (orig) Object.defineProperty(globalThis, 'localStorage', orig); else delete (globalThis as any).localStorage; }
+  });
+  it('importJson rejects wrongly typed optional fields without throwing', () => {
+    const { store } = mk();
+    const base = { id: 'x', title: 'T', author: 'A', genre: 'G', color: '#fff', status: 'unread', addedAt: 1 };
+    for (const bad of [{ isbn: 123 }, { coverUrl: {} }, { finishedAt: 'now' }]) {
+      const r = store.importJson(JSON.stringify({ app: 'bookroulette', version: 1, books: [{ ...base, ...bad }] }));
+      expect(r.ok).toBe(false);
+    }
+    expect(store.books()).toHaveLength(0);
+  });
 });

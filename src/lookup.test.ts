@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { lookupIsbn } from './lookup';
 
 const ISBN = '9780140328721';
@@ -57,5 +57,20 @@ describe('lookupIsbn', () => {
   it('null when fetch rejects or is not ok', async () => {
     expect(await lookupIsbn(ISBN, (() => Promise.reject(new Error('offline'))) as unknown as typeof fetch)).toBeNull();
     expect(await lookupIsbn(ISBN, (() => Promise.resolve({ ok: false } as Response)) as unknown as typeof fetch)).toBeNull();
+  });
+});
+
+describe('lookupIsbn timeout', () => {
+  it('returns null when every fetch hangs', async () => {
+    vi.useFakeTimers();
+    try {
+      let signals = 0;
+      const hang = ((_u: string, init?: RequestInit) => { if (init?.signal) signals++; return new Promise(() => {}); }) as unknown as typeof fetch;
+      const p = lookupIsbn(ISBN, hang);
+      await vi.advanceTimersByTimeAsync(6000);
+      await vi.advanceTimersByTimeAsync(6000);
+      expect(await p).toBeNull();
+      expect(signals).toBe(2);
+    } finally { vi.useRealTimers(); }
   });
 });

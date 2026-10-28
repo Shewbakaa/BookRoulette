@@ -17,7 +17,10 @@ function isBook(x: unknown): x is Book {
   return typeof b.id === 'string' && typeof b.title === 'string' &&
     typeof b.author === 'string' && typeof b.genre === 'string' &&
     typeof b.color === 'string' && typeof b.addedAt === 'number' &&
-    (b.status === 'unread' || b.status === 'reading' || b.status === 'finished');
+    (b.status === 'unread' || b.status === 'reading' || b.status === 'finished') &&
+    (b.isbn === undefined || typeof b.isbn === 'string') &&
+    (b.coverUrl === undefined || typeof b.coverUrl === 'string') &&
+    (b.finishedAt === undefined || typeof b.finishedAt === 'number');
 }
 
 class MemoryStorage {
@@ -43,10 +46,13 @@ export type AddResult = { ok: true; book: Book } | { ok: false; reason: 'duplica
 export class Store {
   private list: Book[] = [];
   private subs = new Set<() => void>();
+  private errSubs = new Set<() => void>();
   private storage: Storage | null;
+  private durable: boolean;
 
   constructor(storage?: Storage) {
     this.storage = storage ?? defaultStorage();
+    this.durable = !(this.storage as unknown instanceof MemoryStorage);
     this.load();
   }
 
@@ -62,8 +68,22 @@ export class Store {
   }
 
   private commit(): void {
-    try { this.storage?.setItem(KEY, JSON.stringify(this.list)); } catch { /* quota/private mode */ }
+    try {
+      this.storage?.setItem(KEY, JSON.stringify(this.list));
+    } catch { // quota/private mode
+      this.durable = false;
+      this.errSubs.forEach(fn => fn());
+    }
     this.subs.forEach(fn => fn());
+  }
+
+  /** False when books only live in memory (storage unavailable or a write failed). */
+  persistent(): boolean { return this.durable; }
+
+  /** Called whenever a save to storage fails. */
+  onSaveError(fn: () => void): () => void {
+    this.errSubs.add(fn);
+    return () => { this.errSubs.delete(fn); };
   }
 
   books(): Book[] { return this.list.map(b => ({ ...b })); }

@@ -120,7 +120,9 @@ export function openAddBook(opts: { isbn?: string } = {}): Flow {
     wrap.append(shimmer, lines);
     const p = el('p', 'add-sub', `${MSG.lookingUp} ISBN ${isbn}`);
     p.setAttribute('role', 'status');
-    swap(wrap, p);
+    const manual = btn('btn-soft add-manual', '✍️ Enter manually');
+    manual.addEventListener('click', () => showForm({ isbn }, MSG.manual));
+    swap(wrap, p, manual); // swap() bumps token, so the late lookup result is dropped
   };
 
   const showDuplicate = (existing: Book): void => {
@@ -142,14 +144,17 @@ export function openAddBook(opts: { isbn?: string } = {}): Flow {
 
   const handle = async (raw: string): Promise<void> => {
     if (sheet.closed) return;
+    let lookupTok = -1;
     const outcome = await resolveScan(raw, {
       books: () => store.books(),
       lookup: async (isbn) => {
         showLookingUp(isbn);
+        lookupTok = token;
         return lookupIsbn(isbn);
       },
     });
     if (sheet.closed) return;
+    if (lookupTok !== -1 && lookupTok !== token) return; // user left the looking-up view (e.g. Enter manually)
     switch (outcome.kind) {
       case 'invalid':
         return; // not an ISBN: ignore, keep whatever is on screen

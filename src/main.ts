@@ -6,7 +6,7 @@ import { sound } from './sound';
 import { createCarousel } from './ui/carousel';
 import { createFilter } from './ui/filter';
 import { emitSpinLanded, onSpinLanded, setSpinHandler } from './app';
-import { showCelebration } from './ui/celebrate';
+import { showCelebration, celebrationOpen } from './ui/celebrate';
 import { renderReadingBanner } from './ui/readingBanner';
 import { askConfirm } from './ui/prompt';
 import { reducedMotion } from './ui/fx';
@@ -16,8 +16,20 @@ import { openAddBook } from './ui/addBook';
 import { openLibrary } from './ui/library';
 import { openFinished } from './ui/finished';
 import { openBackup, importBackup } from './ui/backup';
+import { toast } from './ui/toast';
 
 export { onSpinLanded, spinAgain } from './app';
+
+try { void navigator.storage?.persist?.()?.catch(() => {}); } catch { /* ignore */ }
+
+let saveWarned = false;
+const warnSave = (): void => {
+  if (saveWarned) return;
+  saveWarned = true;
+  toast("Can't save on this device — your books will be lost when you close the app.", 'warn', 6000);
+};
+store.onSaveError(warnSave);
+if (!store.persistent()) warnSave();
 
 const DEMO: { title: string; author: string; genre: string; isbn: string }[] = [
   { title: 'Dune', author: 'Frank Herbert', genre: 'Sci-Fi', isbn: '9780441172719' },
@@ -56,6 +68,7 @@ const poolNote = app.querySelector<HTMLParagraphElement>('#pool-note')!;
 const carousel = createCarousel(app.querySelector<HTMLElement>('#carousel')!);
 let genres = new Set<string>();
 let spinning = false;
+let celebrating = false; // from spin start until the celebration overlay has opened
 
 const filter = createFilter(app.querySelector<HTMLElement>('#filter')!, (g) => {
   genres = g;
@@ -63,9 +76,9 @@ const filter = createFilter(app.querySelector<HTMLElement>('#filter')!, (g) => {
 });
 
 function updateButton(poolSize: number): void {
-  spinBtn.disabled = spinning || poolSize === 0;
-  filter.setDisabled(spinning);
-  spinBtn.classList.toggle('busy', spinning);
+  spinBtn.disabled = spinning || celebrating || poolSize === 0;
+  filter.setDisabled(spinning || celebrating);
+  spinBtn.classList.toggle('busy', spinning || celebrating);
   poolNote.textContent = poolSize === 0 ? '' : `${poolSize} book${poolSize === 1 ? '' : 's'} in the mix`;
 }
 
@@ -76,20 +89,28 @@ function refresh(): void {
 }
 
 async function doSpin(): Promise<Book | null> {
-  if (spinning) return null;
+  if (spinning || celebrating || celebrationOpen()) return null;
   const pool = poolFor(store.books(), genres);
   const winner = pickWinner(pool);
   if (!winner) return null;
   spinning = true;
+  celebrating = true;
   updateButton(pool.length);
   let landed = false;
   try {
     landed = await carousel.spin(ringFor(pool, winner), winner);
+  } catch (e) {
+    celebrating = false;
+    throw e;
   } finally {
     spinning = false;
     updateButton(poolFor(store.books(), genres).length);
   }
-  if (!landed) return null;
+  if (!landed) {
+    celebrating = false;
+    updateButton(poolFor(store.books(), genres).length);
+    return null;
+  }
   emitSpinLanded(winner);
   return winner;
 }
@@ -109,7 +130,10 @@ const readingSlot = app.querySelector<HTMLElement>('#reading-slot')!;
 // After a landing, let the winner's pop play for a beat, then celebrate.
 onSpinLanded((winner) => {
   window.setTimeout(() => {
+    celebrating = false;
+    updateButton(poolFor(store.books(), genres).length);
     showCelebration(winner, {
+      genres: () => genres,
       onAlreadyRead: () => store.setStatus(winner.id, 'finished'),
       onStartReading: async () => {
         const cur = store.current();

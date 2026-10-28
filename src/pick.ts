@@ -26,7 +26,7 @@ function shuffle<T>(arr: T[], rng: Rng): T[] {
 
 export function ringFor(pool: Book[], winner: Book | null, rng: Rng = Math.random): Book[] {
   if (!winner) {
-    return [...pool].sort((a, b) => a.addedAt - b.addedAt).slice(0, RING_MAX);
+    return [...pool].sort((a, b) => b.addedAt - a.addedAt).slice(0, RING_MAX);
   }
   const others = shuffle(pool.filter((b) => b.id !== winner.id), rng).slice(0, RING_MAX - 1);
   return shuffle([winner, ...others], rng);
